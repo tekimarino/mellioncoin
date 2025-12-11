@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card shadow-sm p-4 border-0">
+      <h1 class="h4 mb-2">Simulateur MellionCoin – Cycle fixe 28 jours</h1>
+      <p class="text-muted small mb-4">
+        Entrez le montant de votre investissement initial (X).<br>
+        L’application calcule automatiquement la répartition des MEC,
+        les intérêts, les commissions, le revenu global et la circulation
+        à la fin d’un cycle de 28 jours (taux 24&nbsp;%).
+      </p>
+
+      {% if error %}
+        <div class="alert alert-danger">
+          {{ error }}
+        </div>
+      {% endif %}
+
+      <form action="{{ url_for('result') }}" method="post" class="row gy-3">
+        <div class="col-12">
+          <label for="montant" class="form-label">Montant initial X (USD)</label>
+          <input
+            type="number"
+            class="form-control"
+            id="montant"
+            name="montant"
+            min="{{ mec_value }}"
+            step="{{ mec_value }}"
+            placeholder="Ex. 500, 1000, 1500..."
+            value="{{ montant or '' }}"
+            required
+          >
+          <div class="form-text">
+            Le montant doit être un multiple de {{ mec_value }} USD (valeur d'une MEC).
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label d-block">Réinvestir les commissions ?</label>
+
+          <div class="form-check form-check-inline">
+            <input
+              class="form-check-input"
+              type="radio"
+              name="reinvest"
+              id="reinvest_oui"
+              value="oui"
+              {% if reinvest is not defined or reinvest == 'oui' %}checked{% endif %}
+            >
+            <label class="form-check-label" for="reinvest_oui">
+              Oui (si X ≥ 3000 USD)
+            </label>
+          </div>
+
+          <div class="form-check form-check-inline">
+            <input
+              class="form-check-input"
+              type="radio"
+              name="reinvest"
+              id="reinvest_non"
+              value="non"
+              {% if reinvest == 'non' %}checked{% endif %}
+            >
+            <label class="form-check-label" for="reinvest_non">
+              Non
+            </label>
+          </div>
+
+          <div class="form-text">
+            Pour X &lt; 3000 USD, les commissions ne peuvent pas être réinvesties (règle du système).
+          </div>
+        </div>
+
+        <div class="col-12 d-flex justify-content-end">
+          <button type="submit" class="btn btn-primary px-4">
+            Calculer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
