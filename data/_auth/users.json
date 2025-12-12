@@ -1,0 +1,10 @@
+{
+  "users": {
+    "marinoteki": {
+      "password_hash": "scrypt:32768:8:1$wyX0jWwwDAZbFQqU$e45a823e570013bf5eda3f54dd9f750b97e5b1a45b96d5556d90ace0847a18f2d621ca18675b567fe4fb2f17a6e88ee0e9ce45c1016b570190dce222c6464c2b"
+    },
+    "Arkad": {
+      "password_hash": "scrypt:32768:8:1$XJTz5GPRhBMAljiO$1008b1b3a1900a41a69705aea8078d3f08a2c6b22b3c4806412adf00fce4c2fd0db03c15927a5d2b05792e7d526aa6715677291413f69a453aa1cf3f2e3d044f"
+    }
+  }
+}

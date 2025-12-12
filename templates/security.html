@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block content %}
+<h4 class="mb-3">Sécurité du compte</h4>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Dernière connexion</h5>
+        {% if last and last.when %}
+          <ul class="list-unstyled mb-0">
+            <li><strong>Date :</strong> {{ last.when }}</li>
+            <li><strong>IP :</strong> {{ last.ip }}</li>
+            <li><strong>Appareil :</strong> {{ last.ua }}</li>
+          </ul>
+        {% else %}
+          <div class="text-muted">Aucune donnée de connexion disponible.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Protection</h5>
+        <ul class="list-unstyled mb-2">
+          <li><strong>Timeout d'inactivité :</strong> {{ timeout_minutes }} min</li>
+          <li><strong>Verrouillage :</strong> {{ max_attempts }} tentatives → {{ lock_minutes }} min</li>
+        </ul>
+
+        {% if locked %}
+          <div class="alert alert-danger mb-2">
+            Compte verrouillé sur cet appareil (reste ~{{ (remaining/60)|round(0) }} min).
+          </div>
+        {% endif %}
+
+        <a class="btn btn-primary" href="{{ url_for('change_password') }}">Changer le mot de passe</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm mt-3">
+  <div class="card-body">
+    <h5 class="card-title">Journal d’activité (50 derniers)</h5>
+    {% if not audit %}
+      <div class="text-muted">Aucun événement.</div>
+    {% else %}
+      <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Événement</th>
+              <th>IP</th>
+              <th>Détail</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in audit %}
+              <tr>
+                <td>{{ e.when }}</td>
+                <td>{{ e.event }}</td>
+                <td>{{ e.ip }}</td>
+                <td class="text-muted">{{ e.detail }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

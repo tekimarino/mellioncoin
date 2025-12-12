@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<h4 class="mb-3">Outils</h4>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title">Export</h6>
+        <p class="text-muted mb-2">Télécharge tes données depuis l’application.</p>
+        <div class="d-flex flex-wrap gap-2">
+          <a class="btn btn-outline-primary btn-sm" href="{{ url_for('export_dashboard', fmt='csv') }}">Tableau de bord (CSV)</a>
+          <a class="btn btn-outline-primary btn-sm" href="{{ url_for('export_dashboard', fmt='pdf') }}">Tableau de bord (PDF)</a>
+          <a class="btn btn-outline-primary btn-sm" href="{{ url_for('export_orders', fmt='csv') }}">Ordres (CSV)</a>
+          <a class="btn btn-outline-primary btn-sm" href="{{ url_for('export_orders', fmt='pdf') }}">Ordres (PDF)</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title">Sauvegarde / restauration</h6>
+        <p class="text-muted mb-2">Sauvegarde complète (CSV + ordres JSON) par utilisateur.</p>
+        <div class="d-flex flex-wrap gap-2">
+          <a class="btn btn-outline-success btn-sm" href="{{ url_for('backup_download') }}">Télécharger la sauvegarde (.zip)</a>
+          <a class="btn btn-outline-warning btn-sm" href="{{ url_for('backup_restore') }}">Restaurer une sauvegarde</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title">Importer un historique</h6>
+        <p class="text-muted mb-2">Importer des CSV existants (Tableau_Bord.csv et/ou historique_investissements.csv).</p>
+        <a class="btn btn-outline-dark btn-sm" href="{{ url_for('import_data') }}">Ouvrir l’import</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

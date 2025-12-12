@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title text-center mb-3">Connexion MellionCoin</h5>
+
+        <form method="post">
+          <div class="mb-3">
+            <label class="form-label">Nom d'utilisateur</label>
+            <input type="text" name="username" class="form-control" required autofocus
+                   placeholder="Comptes autorisés : {{ users|join(', ') }}">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Mot de passe</label>
+            <input type="password" name="password" class="form-control" required>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100">Se connecter</button>
+
+          <div class="form-text mt-2">
+            Il y a <b>2 comptes</b> autorisés (chargés depuis <code>data/_auth/users.json</code> (2 comptes max)).
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

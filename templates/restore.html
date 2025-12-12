@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<h4 class="mb-3">Restaurer une sauvegarde</h4>
+
+<div class="alert alert-warning">
+  Attention : la restauration <b>écrase</b> les fichiers existants de ton compte.
+</div>
+
+<form method="post" enctype="multipart/form-data" class="card shadow-sm p-3">
+  <div class="mb-3">
+    <label class="form-label">Archive de sauvegarde (.zip)</label>
+    <input class="form-control" type="file" name="backup_zip" accept=".zip" required>
+  </div>
+  <button class="btn btn-warning">Restaurer</button>
+  <a class="btn btn-link" href="{{ url_for('tools') }}">Annuler</a>
+</form>
+{% endblock %}

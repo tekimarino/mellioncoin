@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h4 class="mb-0">Détail de l’ordre #{{ detail.order_idx }}</h4>
+    <div class="text-muted">Début : {{ detail.date_calcul }} • Fin : {{ detail.date_fin_cycle }}</div>
+  </div>
+
+  {% if paid %}
+    <span class="badge text-bg-success fs-6">PAYÉ</span>
+  {% else %}
+    <span class="badge text-bg-warning fs-6">EN COURS</span>
+  {% endif %}
+</div>
+
+{% if detail.legacy %}
+  <div class="alert alert-warning">
+    Cet ordre a été créé avant l’ajout du stockage détaillé. On affiche la synthèse disponible dans le Tableau de bord.
+  </div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Synthèse</h5>
+        <ul class="list-unstyled mb-0">
+          {% if detail.cycle %}
+            <li><strong>Cycle :</strong> {{ detail.cycle }} jours</li>
+            <li><strong>Taux :</strong> {{ (detail.taux_cycle * 100)|round(2) }} %</li>
+            <li><strong>Réinvestissement :</strong> {% if detail.reinvest %}Oui{% else %}Non{% endif %}</li>
+          {% endif %}
+          <li><strong>MEC :</strong> {{ detail.total_MEC_global|default(detail.MEC) }}</li>
+          {% if detail.repartition_csv %}
+            <li><strong>Fichier répartition :</strong> {{ detail.repartition_csv }}</li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Finances</h5>
+        <ul class="list-unstyled mb-0">
+          {% if detail.X is defined %}
+            <li><strong>Investissement X :</strong> {{ "{:,.2f}".format(detail.X) }} USDT</li>
+            <li><strong>Revenu global :</strong> {{ "{:,.2f}".format(detail.Revenu_global) }} USDT</li>
+            <li><strong>Circulation :</strong> {{ "{:,.2f}".format(detail.circulation) }} USDT</li>
+            <li><strong>Intérêts totaux :</strong> {{ "{:,.2f}".format(detail.total_I) }} USDT</li>
+            <li><strong>Commissions totales :</strong> {{ "{:,.2f}".format(detail.total_C) }} USDT</li>
+            <li><strong>Rendement :</strong> {{ (detail.rendement * 100)|round(2) }} %</li>
+          {% else %}
+            <li><strong>Montant investi :</strong> {{ detail.montant_investi }}</li>
+            <li><strong>Intérêts :</strong> {{ detail.interets }}</li>
+            <li><strong>Commissions :</strong> {{ detail.commissions }}</li>
+            <li><strong>Com. suppl. :</strong> {{ detail.commission_supplementaire }}</li>
+            <li><strong>Revenu global :</strong> {{ detail.revenu_global }}</li>
+            <li><strong>Circulation :</strong> {{ detail.circulation }}</li>
+            <li><strong>Rendement :</strong> {{ detail.rendement }}</li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if detail.niveaux and detail.niveaux|length > 0 %}
+  <div class="card shadow-sm mt-3">
+    <div class="card-body">
+      <h5 class="card-title mb-3">Niveaux (détail complet)</h5>
+      <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle">
+          <thead>
+            <tr>
+              <th>Niveau</th>
+              <th>Rôle</th>
+              <th>MEC</th>
+              <th>Capital</th>
+              <th>Intérêt</th>
+              <th>Commission</th>
+              <th>Revenu</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for n in detail.niveaux %}
+              <tr>
+                <td>{{ n.niveau }}</td>
+                <td>{{ n.role }}</td>
+                <td>{{ n.mec }}</td>
+                <td>{{ "{:,.2f}".format(n.capital) }}</td>
+                <td>{{ "{:,.2f}".format(n.interet) }}</td>
+                <td>{{ "{:,.2f}".format(n.commission) }}</td>
+                <td>{{ "{:,.2f}".format(n.revenu) }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+<div class="d-flex flex-wrap gap-2 mt-3">
+  <a class="btn btn-outline-dark" href="{{ url_for('orders') }}">Retour aux ordres</a>
+  <a class="btn btn-outline-secondary" href="{{ url_for('dashboard') }}">Tableau de bord</a>
+</div>
+
+{% endblock %}

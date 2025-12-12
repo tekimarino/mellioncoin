@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h3 class="m-0">Suivi / Pilotage</h3>
+  <div class="btn-group">
+    <a class="btn btn-outline-primary btn-sm {% if range_m=='1' %}active{% endif %}" href="{{ url_for('analytics', range='1') }}">1 mois</a>
+    <a class="btn btn-outline-primary btn-sm {% if range_m=='6' %}active{% endif %}" href="{{ url_for('analytics', range='6') }}">6 mois</a>
+    <a class="btn btn-outline-primary btn-sm {% if range_m=='12' %}active{% endif %}" href="{{ url_for('analytics', range='12') }}">12 mois</a>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-3">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="text-muted small">Rendement moyen</div>
+        <div class="fs-4 fw-semibold">{{ rendement_moyen }} %</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="text-muted small">Meilleur mois (revenu)</div>
+        <div class="fs-6 fw-semibold">{{ best_month or "-" }}</div>
+        <div class="text-muted">{{ "{:,.2f}".format(best_month_val) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="text-muted small">Total commissions</div>
+        <div class="fs-4 fw-semibold">{{ "{:,.2f}".format(total_commissions) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="text-muted small">Total intérêts</div>
+        <div class="fs-4 fw-semibold">{{ "{:,.2f}".format(total_interets) }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="text-muted small">Retour attendu (cycles en cours)</div>
+        <div class="fs-4 fw-semibold">{{ "{:,.2f}".format(retour_attendu) }}</div>
+        <div class="text-muted small">{{ cycles_en_cours }} ordre(s) en cours</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+          <input type="hidden" name="range" value="{{ range_m }}">
+          <div class="col-12">
+            <div class="text-muted small mb-1">Projection automatique (réinvestissement à chaque cycle)</div>
+          </div>
+          <div class="col-sm-7">
+            <label class="form-label small">Montant de départ (X)</label>
+            <input class="form-control" name="start_x" value="{{ start_x }}" placeholder="ex: 150000">
+            {% if adjusted %}
+              <div class="form-text text-warning">Montant ajusté au multiple de 500 le plus proche (inférieur).</div>
+            {% endif %}
+          </div>
+          <div class="col-sm-5 d-grid">
+            <button class="btn btn-primary">Calculer</button>
+          </div>
+        </form>
+
+        {% if proj_err %}
+          <div class="alert alert-warning mt-3 mb-0">{{ proj_err }}</div>
+        {% else %}
+          <div class="row g-2 mt-3">
+            <div class="col-4">
+              <div class="border rounded p-2">
+                <div class="text-muted small">Dans 3 cycles</div>
+                <div class="fw-semibold">{{ "{:,.2f}".format(proj_3 or 0) }}</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="border rounded p-2">
+                <div class="text-muted small">Dans 6 cycles</div>
+                <div class="fw-semibold">{{ "{:,.2f}".format(proj_6 or 0) }}</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="border rounded p-2">
+                <div class="text-muted small">Dans 12 cycles</div>
+                <div class="fw-semibold">{{ "{:,.2f}".format(proj_12 or 0) }}</div>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <h5 class="mb-3">Graphiques (par mois)</h5>
+    <div class="mb-4">
+      <div class="text-muted small mb-2">Circulation</div>
+      <canvas id="chartCirculation" height="90"></canvas>
+    </div>
+    <div class="mb-4">
+      <div class="text-muted small mb-2">Revenu global</div>
+      <canvas id="chartRevenu" height="90"></canvas>
+    </div>
+    <div>
+      <div class="text-muted small mb-2">MEC</div>
+      <canvas id="chartMEC" height="90"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h5 class="mb-3">Projection (12 cycles)</h5>
+    {% if projection_rows and projection_rows|length > 0 %}
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>X (début)</th>
+              <th>Revenu global</th>
+              <th>Circulation (fin)</th>
+              <th>MEC</th>
+              <th>Rendement</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in projection_rows %}
+            <tr>
+              <td>{{ r.cycle_n }}</td>
+              <td>{{ "{:,.2f}".format(r.X) }}</td>
+              <td>{{ "{:,.2f}".format(r.revenu_global) }}</td>
+              <td class="fw-semibold">{{ "{:,.2f}".format(r.circulation) }}</td>
+              <td>{{ "{:,.0f}".format(r.mec) }}</td>
+              <td>{{ "{:,.2f}".format(r.rendement*100) }} %</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="text-muted">Aucune donnée de projection.</div>
+    {% endif %}
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const labels = {{ labels|tojson }};
+  const serieCirculation = {{ series_circulation|tojson }};
+  const serieRevenu = {{ series_revenu|tojson }};
+  const serieMEC = {{ series_mec|tojson }};
+
+  function makeLineChart(canvasId, label, data){
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    return new Chart(ctx, {
+      type: 'line',
+      data: { labels: labels, datasets: [{ label: label, data: data, tension: 0.25 }] },
+      options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+  }
+  makeLineChart('chartCirculation', 'Circulation', serieCirculation);
+  makeLineChart('chartRevenu', 'Revenu global', serieRevenu);
+  makeLineChart('chartMEC', 'MEC', serieMEC);
+</script>
+{% endblock %}

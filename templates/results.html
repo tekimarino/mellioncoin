@@ -1,169 +1,80 @@
 {% extends "base.html" %}
-
 {% block content %}
+<h4 class="mb-3">Résultats de la simulation</h4>
 
-<div class="row mb-4 align-items-center">
-  <div class="col-12 col-lg-8">
-    <h1 class="h4 mb-1">Résultats du calcul</h1>
-    <p class="text-muted small mb-0">
-      Calcul effectué le {{ data.now.strftime("%d-%m-%Y %H:%M:%S") }} –
-      cycle de {{ data.cycle }} jours –
-      taux {{ (data.taux_cycle * 100) | fmt2(0) }}&nbsp;%.
-    </p>
+<div class="row">
+  <div class="col-md-6">
+    <div class="card mb-3 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Synthèse</h5>
+        <ul class="list-unstyled mb-0">
+          <li><strong>Date du calcul :</strong> {{ result.date_calcul }}</li>
+          <li><strong>Montant initial X :</strong> {{ "{:,.2f}".format(result.X) }} USD</li>
+          <li><strong>Cycle :</strong> {{ result.cycle }} jours</li>
+          <li><strong>Taux d'intérêt :</strong> {{ (result.taux_cycle * 100)|round(2) }} %</li>
+          <li><strong>Réinvestissement :</strong>
+            {% if result.reinvest %}Oui{% else %}Non{% endif %}
+          </li>
+          <li><strong>Nombre total de MEC :</strong> {{ result.total_MEC_global|round(0) }}</li>
+        </ul>
+      </div>
+    </div>
   </div>
 
-  <!-- 🔥 ICI : les deux boutons en haut à droite -->
-  <div class="col-12 col-lg-4 text-lg-end mt-3 mt-lg-0">
-    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary me-2">
+  <div class="col-md-6">
+    <div class="card mb-3 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Finances</h5>
+        <ul class="list-unstyled mb-0">
+          <li><strong>Total intérêts :</strong> {{ "{:,.2f}".format(result.total_I) }}</li>
+          <li><strong>Total commissions :</strong> {{ "{:,.2f}".format(result.total_C) }}</li>
+          <li><strong>Commission supplémentaire :</strong> {{ "{:,.2f}".format(result.Com_supp) }}</li>
+          <li><strong>Revenu global :</strong> {{ "{:,.2f}".format(result.Revenu_global) }}</li>
+          <li><strong>Montant investi (avec Sa) :</strong> {{ "{:,.2f}".format(result.montant_investi) }}</li>
+          <li><strong>Rendement :</strong> {{ (result.rendement * 100)|round(2) }} %</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h5 class="card-title mb-3">Détail par niveau</h5>
+    <div class="table-responsive">
+      <table class="table table-sm table-striped">
+        <thead>
+        <tr>
+          <th>Niveau</th>
+          <th>Rôle</th>
+          <th>MEC</th>
+          <th>Capital</th>
+          <th>Intérêt</th>
+          <th>Commission</th>
+          <th>Revenu</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for n in result.niveaux %}
+          <tr>
+            <td>{{ n.niveau }}</td>
+            <td>{{ n.role }}</td>
+            <td>{{ n.mec }}</td>
+            <td>{{ "{:,.2f}".format(n.capital) }}</td>
+            <td>{{ "{:,.2f}".format(n.interet) }}</td>
+            <td>{{ "{:,.2f}".format(n.commission) }}</td>
+            <td>{{ "{:,.2f}".format(n.revenu) }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+      Nouvelle simulation
+    </a>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
       Voir le tableau de bord
     </a>
-    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
-      Nouveau calcul
-    </a>
   </div>
 </div>
-
-<!-- Cartes synthèse -->
-<div class="row g-3 mb-4">
-  <div class="col-12 col-md-4">
-    <div class="card p-3 h-100 shadow-sm border-0">
-      <div class="fw-semibold text-muted small mb-1">Montant investi</div>
-      <div class="h5 mb-0">{{ data.montant_investi | fmt2 }} USD</div>
-      <div class="text-muted small">
-        X initial : {{ data.X | fmt2 }} USD
-      </div>
-    </div>
-  </div>
-
-  <div class="col-12 col-md-4">
-    <div class="card p-3 h-100 shadow-sm border-0">
-      <div class="fw-semibold text-muted small mb-1">Revenu global (28 jours)</div>
-      <div class="h5 mb-0">{{ data.Revenu_global | fmt2 }} USD</div>
-      <div class="text-muted small">
-        Rendement : {{ data.rendement | fmt2 }} %
-      </div>
-    </div>
-  </div>
-
-  <div class="col-12 col-md-4">
-    <div class="card p-3 h-100 shadow-sm border-0">
-      <div class="fw-semibold text-muted small mb-1">Circulation fin de cycle</div>
-      <div class="h5 mb-0">{{ data.circulation | fmt2 }} USD</div>
-      <div class="text-muted small">
-        Fin du cycle : {{ data.date_fin_cycle.strftime("%d-%m-%Y") }}
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Tables de détails -->
-<div class="row g-3 mb-4">
-  <div class="col-12 col-lg-6">
-    <div class="card p-3 h-100 shadow-sm border-0">
-      <h2 class="h6 mb-3">Répartition des MEC par niveau</h2>
-      <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0">
-          <thead>
-            <tr>
-              <th>Niveau</th>
-              <th>Rôle</th>
-              <th class="text-end">MEC</th>
-              <th class="text-end">Capital (USD)</th>
-            </tr>
-          </thead>
-          <tbody>
-          {% for row in data.levels %}
-            <tr>
-              <td>{{ row.niveau }}</td>
-              <td>{{ row.role }}</td>
-              <td class="text-end">{{ row.mec | fmt0 }}</td>
-              <td class="text-end">{{ row.capital | fmt2 }}</td>
-            </tr>
-          {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      <div class="text-muted small mt-2">
-        Nombre total de MEC : <strong>{{ data.total_MEC_global | fmt0 }}</strong>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-12 col-lg-6">
-    <div class="card p-3 h-100 shadow-sm border-0">
-      <h2 class="h6 mb-3">Intérêts, commissions et revenus</h2>
-      <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0">
-          <thead>
-            <tr>
-              <th>Niveau</th>
-              <th>Rôle</th>
-              <th class="text-end">Intérêt</th>
-              <th class="text-end">Commission</th>
-              <th class="text-end">Revenu</th>
-            </tr>
-          </thead>
-          <tbody>
-          {% for row in data.levels %}
-            <tr>
-              <td>{{ row.niveau }}</td>
-              <td>{{ row.role }}</td>
-              <td class="text-end">{{ row.interet | fmt2 }}</td>
-              <td class="text-end">{{ row.commission | fmt2 }}</td>
-              <td class="text-end">{{ row.revenu | fmt2 }}</td>
-            </tr>
-          {% endfor %}
-          </tbody>
-          <tfoot>
-            <tr>
-              <th colspan="2">TOTAL</th>
-              <th class="text-end">{{ data.total_I | fmt2 }}</th>
-              <th class="text-end">{{ data.total_C | fmt2 }}</th>
-              <th class="text-end">{{ data.total_R | fmt2 }}</th>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Bloc réinvestissement -->
-<div class="row g-3">
-  <div class="col-12">
-    <div class="card p-3 shadow-sm border-0">
-      <h2 class="h6 mb-3">Détails du réinvestissement</h2>
-
-      {% if not data.reinvest_possible %}
-        <p class="mb-1">
-          Pour X &lt; 3000 USD, aucune option de réinvestissement n’est appliquée.
-        </p>
-      {% elif not data.reinvest_effective %}
-        <p class="mb-1">
-          Vous avez choisi de ne pas réinvestir les commissions.
-        </p>
-      {% else %}
-        <ul class="mb-0">
-          <li>
-            Commission totale à réinvestir (C<sub>tm</sub>) :
-            <strong>{{ data.C_tm | fmt2 }} USD</strong>
-          </li>
-          <li>
-            Somme ajoutée (S<sub>a</sub>) pour atteindre un multiple de MEC :
-            <strong>{{ data.Sa | fmt2 }} USD</strong>
-          </li>
-          <li>
-            Commission supplémentaire générée (Com<sub>supp</sub>) :
-            <strong>{{ data.Com_supp | fmt2 }} USD</strong>
-          </li>
-          <li>
-            MEC issues des commissions réinvesties :
-            <strong>{{ data.mec_commission_reinvestie | fmt0 }} MEC</strong>
-          </li>
-        </ul>
-      {% endif %}
-    </div>
-  </div>
-</div>
-
 {% endblock %}

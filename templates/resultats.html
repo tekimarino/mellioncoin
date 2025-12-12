@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block content %}
+<h4 class="mb-3">Résultats de la simulation</h4>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Synthèse</h5>
+        <ul class="list-unstyled mb-0">
+          <li><strong>Date :</strong> {{ result.date_calcul }}</li>
+          <li><strong>Fin de cycle :</strong> {{ result.date_fin_cycle }}</li>
+          <li><strong>Cycle :</strong> {{ result.cycle }} jours</li>
+          <li><strong>Taux :</strong> {{ (result.taux_cycle * 100)|round(2) }} %</li>
+          <li><strong>Réinvestissement :</strong> {% if result.reinvest %}Oui{% else %}Non{% endif %}</li>
+          <li><strong>MEC :</strong> {{ result.total_MEC_global|round(0) }}</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Finances</h5>
+        <ul class="list-unstyled mb-0">
+          <li><strong>Investissement X :</strong> {{ "{:,.2f}".format(result.X) }} USDT</li>
+          <li><strong>Revenu global :</strong> {{ "{:,.2f}".format(result.Revenu_global) }} USDT</li>
+          <li><strong>Circulation :</strong> {{ "{:,.2f}".format(result.circulation) }} USDT</li>
+          <li><strong>Rendement :</strong> {{ (result.rendement * 100)|round(2) }} %</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm mt-3">
+  <div class="card-body">
+    <h5 class="card-title mb-3">Détail par niveau</h5>
+    <div class="table-responsive">
+      <table class="table table-sm table-striped align-middle">
+        <thead>
+          <tr>
+            <th>Niveau</th>
+            <th>Rôle</th>
+            <th>MEC</th>
+            <th>Capital</th>
+            <th>Intérêt</th>
+            <th>Commission</th>
+            <th>Revenu</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for n in result.niveaux %}
+          <tr>
+            <td>{{ n.niveau }}</td>
+            <td>{{ n.role }}</td>
+            <td>{{ n.mec }}</td>
+            <td>{{ "{:,.2f}".format(n.capital) }}</td>
+            <td>{{ "{:,.2f}".format(n.interet) }}</td>
+            <td>{{ "{:,.2f}".format(n.commission) }}</td>
+            <td>{{ "{:,.2f}".format(n.revenu) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-outline-primary" href="{{ url_for('index') }}">Nouvelle simulation</a>
+      <a class="btn btn-outline-dark" href="{{ url_for('orders') }}">Mes ordres</a>
+      <a class="btn btn-outline-secondary" href="{{ url_for('dashboard') }}">Tableau de bord</a>
+      <a class="btn btn-success" href="{{ url_for('order_detail', order_idx=result.order_idx) }}">Détail de l’ordre</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

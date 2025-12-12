@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <h4 class="mb-0">Mes ordres</h4>
+  <div class="d-flex gap-2">
+    <div class="btn-group">
+      <a class="btn btn-outline-primary btn-sm" href="{{ url_for('export_orders', fmt='csv', **url_params) }}">Exporter CSV</a>
+      <a class="btn btn-outline-primary btn-sm" href="{{ url_for('export_orders', fmt='pdf', **url_params) }}">Exporter PDF</a>
+    </div>
+    <a class="btn btn-outline-success btn-sm" href="{{ url_for('orders', page=page, **url_params) }}">Rafraîchir</a>
+  </div>
+</div>
+
+<form method="get" action="{{ url_for('orders') }}" class="card shadow-sm p-3 mb-3">
+  <div class="row g-2 align-items-end">
+    <div class="col-md-4">
+      <label class="form-label mb-1">Recherche</label>
+      <input type="text" name="q" class="form-control" value="{{ filters.q }}"
+             placeholder="Ex: 12-12-2025, payé, #3">
+    </div>
+
+    <div class="col-md-2">
+      <label class="form-label mb-1">Statut</label>
+      <select name="status" class="form-select">
+        <option value="all"  {% if filters.status == "all" %}selected{% endif %}>Tous</option>
+        <option value="open" {% if filters.status == "open" %}selected{% endif %}>EN COURS</option>
+        <option value="paid" {% if filters.status == "paid" %}selected{% endif %}>PAYÉ</option>
+      </select>
+    </div>
+
+    <div class="col-md-2">
+      <label class="form-label mb-1">Du</label>
+      <input type="date" name="date_from" class="form-control" value="{{ filters.date_from }}">
+    </div>
+
+    <div class="col-md-2">
+      <label class="form-label mb-1">Au</label>
+      <input type="date" name="date_to" class="form-control" value="{{ filters.date_to }}">
+    </div>
+
+    <div class="col-md-2 d-grid">
+      <button class="btn btn-primary" type="submit">Filtrer</button>
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label mb-1">Montant min (USDT)</label>
+      <input type="number" name="min_amount" class="form-control" value="{{ filters.min_amount }}" step="1" min="0">
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label mb-1">Montant max (USDT)</label>
+      <input type="number" name="max_amount" class="form-control" value="{{ filters.max_amount }}" step="1" min="0">
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label mb-1">MEC min</label>
+      <input type="number" name="min_mec" class="form-control" value="{{ filters.min_mec }}" step="1" min="0">
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label mb-1">MEC max</label>
+      <input type="number" name="max_mec" class="form-control" value="{{ filters.max_mec }}" step="1" min="0">
+    </div>
+  </div>
+
+  <div class="mt-2 d-flex gap-2 flex-wrap">
+    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('orders') }}">Réinitialiser</a>
+  </div>
+</form>
+
+<div class="text-muted mb-3">
+  Résultats : <b>{{ total }}</b> / <b>{{ total_all }}</b> • Page <b>{{ page }}</b> / <b>{{ total_pages }}</b>
+</div>
+
+{% if not orders %}
+  <div class="alert alert-info">Aucun ordre trouvé avec ces filtres.</div>
+{% else %}
+  {% for o in orders %}
+    <div class="order-card mb-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="text-white fw-semibold">Ordre #{{ o.order_idx }}</div>
+
+        {% if o.detail_ok %}
+        <a class="btn btn-sm btn-outline-light"
+           href="{{ url_for('order_detail', order_idx=o.order_idx) }}">
+          Détails
+        </a>
+        {% endif %}
+      </div>
+
+      <div class="order-row">
+        <div class="order-label">cycle de circulation</div>
+        <div class="order-value">{{ o.cycle_days }} jour(s)</div>
+      </div>
+
+      <div class="order-row">
+        <div class="order-label">Circulation-retour</div>
+        <div class="order-value">{{ o.investi_initial }} - {{ o.circulation }} USDT</div>
+      </div>
+
+      <div class="order-row">
+        <div class="order-label">État</div>
+        {% if o.paid %}
+          <div class="order-value status-paid">PAYÉ</div>
+        {% else %}
+          <div class="order-value countdown" data-remaining="{{ o.remaining }}"></div>
+        {% endif %}
+      </div>
+
+      <div class="order-row">
+        <div class="order-label">Airdrop</div>
+        <div class="order-value">{{ o.MEC }} MEC</div>
+      </div>
+
+      <div class="order-meta mt-2">
+        <small>Début : {{ o.date_calcul }} • Fin : {{ o.date_fin_cycle }}</small>
+      </div>
+
+      {% if not o.detail_ok %}
+        <div class="mt-2"><span class="badge text-bg-warning">Détails indisponibles (ordre ancien)</span></div>
+      {% endif %}
+    </div>
+  {% endfor %}
+{% endif %}
+
+<nav aria-label="Pagination" class="mt-3">
+  <ul class="pagination justify-content-center">
+    <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+      <a class="page-link" href="{{ url_for('orders', page=page-1, **url_params) }}">Précédent</a>
+    </li>
+
+    {% for p in range(1, total_pages + 1) %}
+      <li class="page-item {% if p == page %}active{% endif %}">
+        <a class="page-link" href="{{ url_for('orders', page=p, **url_params) }}">{{ p }}</a>
+      </li>
+    {% endfor %}
+
+    <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+      <a class="page-link" href="{{ url_for('orders', page=page+1, **url_params) }}">Suivant</a>
+    </li>
+  </ul>
+</nav>
+
+<script>
+  function fmt(sec) {
+    sec = Math.max(0, sec);
+    const d = Math.floor(sec / 86400); sec %= 86400;
+    const h = Math.floor(sec / 3600);  sec %= 3600;
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${d}D${h}H${m}M${s}S`;
+  }
+
+  function tick() {
+    document.querySelectorAll(".countdown").forEach(el => {
+      let rem = parseInt(el.dataset.remaining || "0", 10);
+      if (rem <= 0) {
+        el.textContent = "PAYÉ";
+        el.classList.remove("countdown");
+        el.classList.add("status-paid");
+        return;
+      }
+      el.textContent = fmt(rem);
+      el.dataset.remaining = String(rem - 1);
+    });
+  }
+
+  tick();
+  setInterval(tick, 1000);
+</script>
+
+{% endblock %}
