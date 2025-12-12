@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
 <h4 class="mb-3">Outils</h4>
+<div class="alert alert-info">Le nettoyage supprime seulement les <strong>CSV</strong>. Les <strong>ordres restent visibles</strong> (stockage en JSON).</div>
+
 
 <div class="row g-3">
   <div class="col-lg-6">
@@ -31,6 +33,60 @@
     </div>
   </div>
 
+<div class="col-12">
+  <div class="card shadow-sm border-danger">
+    <div class="card-body">
+      <h6 class="card-title text-danger">Nettoyage (CSV générés)</h6>
+      <p class="text-muted mb-2">
+        Supprime les fichiers CSV générés pour <b>ton compte uniquement</b>. Action irréversible.
+      </p>
+
+      {% if csv_files and csv_files|length > 0 %}
+        <div class="mb-2">
+          <div class="text-muted small mb-1">CSV détectés :</div>
+          <div class="d-flex flex-wrap gap-2">
+            {% for f in csv_files %}
+              <span class="badge text-bg-secondary">{{ f }}</span>
+            {% endfor %}
+          </div>
+        </div>
+      {% else %}
+        <div class="text-muted small mb-2">Aucun fichier CSV détecté dans ton espace.</div>
+      {% endif %}
+
+      <div class="d-flex flex-wrap gap-2">
+        <form method="post" action="{{ url_for('cleanup_csv') }}">
+          <input type="hidden" name="action" value="repartition">
+          <button class="btn btn-outline-danger btn-sm"
+                  onclick="return confirm('Supprimer toutes les répartitions MEC (Repartition_MEC_*.csv) ?');">
+            Supprimer répartitions MEC
+          </button>
+        </form>
+
+        <form method="post" action="{{ url_for('cleanup_csv') }}">
+          <input type="hidden" name="action" value="dashboard_history">
+          <button class="btn btn-outline-danger btn-sm"
+                  onclick="return confirm('Supprimer Tableau_Bord.csv et historique_investissements.csv ?');">
+            Supprimer dashboard + historique
+          </button>
+        </form>
+
+        <form method="post" action="{{ url_for('cleanup_csv') }}">
+          <input type="hidden" name="action" value="all">
+          <button class="btn btn-danger btn-sm"
+                  onclick="return confirm('ATTENTION : supprimer TOUS les CSV de ton compte ?');">
+            Supprimer tous les CSV
+          </button>
+        </form>
+      </div>
+
+      <div class="form-text mt-2">
+        Les fichiers JSON (détails d’ordres) et tes favoris ne sont pas supprimés.
+      </div>
+    </div>
+  </div>
+</div>
+
   <div class="col-12">
     <div class="card shadow-sm">
       <div class="card-body">
@@ -40,5 +96,20 @@
       </div>
     </div>
   </div>
+
+<div class="col-12">
+  <div class="card border-danger shadow-sm">
+    <div class="card-body">
+      <h6 class="card-title text-danger">Réinitialiser les données d’ordres</h6>
+      <p class="text-muted mb-2">
+        Cette action supprime <strong>tous tes ordres</strong> (JSON), tes favoris/épinglés et les CSV (Tableau_Bord, historique, répartitions) pour le compte connecté.
+        <br><strong>Impossible d’annuler</strong>. Fais une sauvegarde avant si nécessaire.
+      </p>
+      <a class="btn btn-danger btn-sm" href="{{ url_for('reset_orders') }}">Réinitialiser maintenant</a>
+    </div>
+  </div>
+</div>
+
+
 </div>
 {% endblock %}

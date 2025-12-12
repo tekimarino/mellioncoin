@@ -1,11 +1,11 @@
 {
   "order_idx": 0,
-  "date_calcul": "12-12-2025 00:27:17",
-  "date_fin_cycle": "09-01-2026 00:27:17",
+  "date_calcul": "12-12-2025 14:18:35",
+  "date_fin_cycle": "09-01-2026 14:18:35",
   "cycle": 28,
   "taux_cycle": 0.24,
   "X": 50000.0,
-  "reinvest": true,
+  "reinvest": false,
   "repartition_csv": "Repartition_MEC_1.csv",
   "niveaux": [
     {
@@ -174,13 +174,15 @@
   "total_I": 12000.0,
   "total_C": 7233.599999999999,
   "total_R": 19233.6,
-  "C_tm": 7500.0,
-  "Sa": 266.40000000000055,
-  "Com_supp": 9300.0,
-  "Revenu_global": 21300.0,
-  "circulation": 71300.0,
+  "C_tm": 0.0,
+  "Sa": 0.0,
+  "Com_supp": 0.0,
+  "Revenu_global": 19233.6,
+  "circulation": 69233.6,
+  "circulation_arrondie": 69000.0,
+  "x_next": 69000.0,
   "total_MEC_initial": 100.0,
-  "total_MEC_global": 115.0,
-  "montant_investi": 50266.4,
-  "rendement": 0.4237423010201645
+  "total_MEC_global": 100.0,
+  "montant_investi": 50000.0,
+  "rendement": 0.38467199999999996
 }

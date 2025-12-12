@@ -49,16 +49,32 @@
             <li><strong>Investissement X :</strong> {{ "{:,.2f}".format(detail.X) }} USDT</li>
             <li><strong>Revenu global :</strong> {{ "{:,.2f}".format(detail.Revenu_global) }} USDT</li>
             <li><strong>Circulation :</strong> {{ "{:,.2f}".format(detail.circulation) }} USDT</li>
+            {% if detail.circulation_arrondie is defined %}
+              <li><strong>Circulation arrondie (×500) :</strong> {{ "{:,.2f}".format(detail.circulation_arrondie) }} USDT</li>
+              <li><strong>X (ordre suivant) :</strong> {{ "{:,.2f}".format(detail.x_next) }} USDT</li>
+            {% endif %}
             <li><strong>Intérêts totaux :</strong> {{ "{:,.2f}".format(detail.total_I) }} USDT</li>
-            <li><strong>Commissions totales :</strong> {{ "{:,.2f}".format(detail.total_C) }} USDT</li>
+            {% if detail.reinvest %}
+              <li><strong>Commission supplémentaire :</strong> {{ "{:,.2f}".format(detail.Com_supp) }} USDT</li>
+            {% else %}
+              <li><strong>Commissions totales :</strong> {{ "{:,.2f}".format(detail.total_C) }} USDT</li>
+            {% endif %}
             <li><strong>Rendement :</strong> {{ (detail.rendement * 100)|round(2) }} %</li>
           {% else %}
             <li><strong>Montant investi :</strong> {{ detail.montant_investi }}</li>
             <li><strong>Intérêts :</strong> {{ detail.interets }}</li>
-            <li><strong>Commissions :</strong> {{ detail.commissions }}</li>
-            <li><strong>Com. suppl. :</strong> {{ detail.commission_supplementaire }}</li>
+            {% set cs = detail.commission_supplementaire|replace(" ", "")|replace(",", "") %}
+            {% if cs|float > 0 %}
+              <li><strong>Commission supplémentaire :</strong> {{ detail.commission_supplementaire }} </li>
+            {% else %}
+              <li><strong>Commissions totales :</strong> {{ detail.commissions }} </li>
+            {% endif %}
             <li><strong>Revenu global :</strong> {{ detail.revenu_global }}</li>
             <li><strong>Circulation :</strong> {{ detail.circulation }}</li>
+            {% if detail.circulation_arrondie is defined %}
+              <li><strong>Circulation arrondie (×500) :</strong> {{ "{:,.2f}".format(detail.circulation_arrondie) }} USDT</li>
+              <li><strong>X (ordre suivant) :</strong> {{ "{:,.2f}".format(detail.x_next) }} USDT</li>
+            {% endif %}
             <li><strong>Rendement :</strong> {{ detail.rendement }}</li>
           {% endif %}
         </ul>

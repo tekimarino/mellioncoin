@@ -25,8 +25,18 @@
         <h5 class="card-title">Finances</h5>
         <ul class="list-unstyled mb-0">
           <li><strong>Investissement X :</strong> {{ "{:,.2f}".format(result.X) }} USDT</li>
+          <li><strong>Intérêts totaux :</strong> {{ "{:,.2f}".format(result.total_I) }} USDT</li>
+          {% if result.reinvest %}
+            <li><strong>Commission supplémentaire :</strong> {{ "{:,.2f}".format(result.Com_supp) }} USDT</li>
+          {% else %}
+            <li><strong>Commissions totales :</strong> {{ "{:,.2f}".format(result.total_C) }} USDT</li>
+          {% endif %}
           <li><strong>Revenu global :</strong> {{ "{:,.2f}".format(result.Revenu_global) }} USDT</li>
           <li><strong>Circulation :</strong> {{ "{:,.2f}".format(result.circulation) }} USDT</li>
+          {% if result.circulation_arrondie is defined %}
+            <li><strong>Circulation arrondie (×500) :</strong> {{ "{:,.2f}".format(result.circulation_arrondie) }} USDT</li>
+            <li><strong>X (ordre suivant) :</strong> {{ "{:,.2f}".format(result.x_next) }} USDT</li>
+          {% endif %}
           <li><strong>Rendement :</strong> {{ (result.rendement * 100)|round(2) }} %</li>
         </ul>
       </div>
@@ -67,7 +77,7 @@
     </div>
 
     <div class="d-flex flex-wrap gap-2">
-      <a class="btn btn-outline-primary" href="{{ url_for('index') }}">Nouvelle simulation</a>
+      <a class="btn btn-outline-primary" href="{{ url_for('index', prefill_x=(result.x_next|round(0)|int)) }}">Nouvelle simulation</a>
       <a class="btn btn-outline-dark" href="{{ url_for('orders') }}">Mes ordres</a>
       <a class="btn btn-outline-secondary" href="{{ url_for('dashboard') }}">Tableau de bord</a>
       <a class="btn btn-success" href="{{ url_for('order_detail', order_idx=result.order_idx) }}">Détail de l’ordre</a>

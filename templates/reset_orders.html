@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<h4 class="mb-3 text-danger">Réinitialisation des données</h4>
+
+<div class="alert alert-danger">
+  <strong>Attention :</strong> cette action va supprimer définitivement les données liées aux ordres pour <strong>ce compte</strong>.
+  <ul class="mb-0">
+    <li>Ordres ({{ order_count }})</li>
+    <li>Fichiers CSV ({{ csv_count }})</li>
+    <li>Favoris / épinglés</li>
+  </ul>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <p class="text-muted">
+      Tu fais ça typiquement <strong>avant un déploiement public</strong> pour partir sur une base vide.
+      Si tu veux garder une copie, fais d’abord une <strong>sauvegarde ZIP</strong> depuis la page Outils.
+    </p>
+
+    <form method="post" class="mt-3">
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" value="yes" id="ack" required>
+        <label class="form-check-label" for="ack">
+          Je comprends que toutes mes données d’ordres seront supprimées.
+        </label>
+      </div>
+
+      <input type="hidden" name="confirm" value="yes">
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-danger">Oui, réinitialiser</button>
+        <a class="btn btn-outline-secondary" href="{{ url_for('tools') }}">Annuler</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

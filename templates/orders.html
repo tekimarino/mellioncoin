@@ -79,14 +79,26 @@
   {% for o in orders %}
     <div class="order-card mb-3">
       <div class="d-flex justify-content-between align-items-center">
-        <div class="text-white fw-semibold">Ordre #{{ o.order_idx }}</div>
-
-        {% if o.detail_ok %}
-        <a class="btn btn-sm btn-outline-light"
-           href="{{ url_for('order_detail', order_idx=o.order_idx) }}">
-          Détails
-        </a>
-        {% endif %}
+        <div class="text-white fw-semibold">Ordre #{{ o.order_idx }}          {% if o.alert_badge and not o.paid %}
+            <span class="badge ms-2 text-bg-warning">{{ o.alert_badge }}</span>
+          {% endif %}
+          {% if o.paid %}
+            <span class="badge ms-2 text-bg-success">PAYÉ</span>
+          {% endif %}
+        </div>
+        <div class="d-flex gap-2">
+          <form method="post" action="{{ url_for('orders_toggle_favorite', order_idx=o.order_idx) }}">
+            <button class="btn btn-sm btn-outline-light" title="Épingler">
+              {% if o.favorite %}★{% else %}☆{% endif %}
+            </button>
+          </form>
+          {% if o.detail_ok %}
+          <a class="btn btn-sm btn-outline-light"
+             href="{{ url_for('order_detail', order_idx=o.order_idx) }}">
+            Détails
+          </a>
+          {% endif %}
+        </div>
       </div>
 
       <div class="order-row">

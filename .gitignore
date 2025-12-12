@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Environnements
+.venv/
+venv/
+.env
+
+# Données (NE PAS versionner)
+data/
+
+# Archives / exports
+*.zip

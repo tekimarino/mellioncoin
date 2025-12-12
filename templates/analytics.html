@@ -67,13 +67,45 @@
             <label class="form-label small">Montant de départ (X)</label>
             <input class="form-control" name="start_x" value="{{ start_x }}" placeholder="ex: 150000">
             {% if adjusted %}
-              <div class="form-text text-warning">Montant ajusté au multiple de 500 le plus proche (inférieur).</div>
+              <div class="form-text text-warning">Montant ajusté au multiple de 500 le plus proche.</div>
             {% endif %}
           </div>
           <div class="col-sm-5 d-grid">
             <button class="btn btn-primary">Calculer</button>
           </div>
         </form>
+        <hr class="my-4">
+
+        <div class="text-muted small mb-2">Projection avec objectif (ex: atteindre 100&nbsp;000)</div>
+        <form class="row g-2" method="get" action="{{ url_for('analytics') }}">
+          <input type="hidden" name="range" value="{{ range_m }}">
+          <div class="col-sm-7">
+            <label class="form-label small">Objectif (USDT)</label>
+            <input class="form-control" name="target" value="{{ obj_target or '' }}" placeholder="ex: 100000">
+          </div>
+          <div class="col-sm-3">
+            <label class="form-label small">Cycles</label>
+            <select class="form-select" name="target_cycles">
+              <option value="3" {% if obj_cycles == '3' %}selected{% endif %}>3</option>
+              <option value="6" {% if obj_cycles == '6' %}selected{% endif %}>6</option>
+              <option value="12" {% if obj_cycles == '12' %}selected{% endif %}>12</option>
+            </select>
+          </div>
+          <div class="col-sm-2 d-grid">
+            <button class="btn btn-outline-primary">Calculer</button>
+          </div>
+        </form>
+
+        {% if obj_err %}
+          <div class="alert alert-warning mt-3 mb-0">{{ obj_err }}</div>
+        {% elif obj_required_x %}
+          <div class="alert alert-success mt-3 mb-0">
+            Pour atteindre <strong>{{ "{:,.2f}".format(obj_target_val or 0) }}</strong> en <strong>{{ obj_cycles }}</strong> cycles,
+            il faut investir environ <strong>{{ "{:,.2f}".format(obj_required_x) }}</strong> aujourd’hui.
+            <div class="small text-muted mt-1">Projection obtenue : {{ "{:,.2f}".format(obj_final or 0) }}</div>
+          </div>
+        {% endif %}
+
 
         {% if proj_err %}
           <div class="alert alert-warning mt-3 mb-0">{{ proj_err }}</div>
@@ -145,7 +177,9 @@
               <td>{{ r.cycle_n }}</td>
               <td>{{ "{:,.2f}".format(r.X) }}</td>
               <td>{{ "{:,.2f}".format(r.revenu_global) }}</td>
-              <td class="fw-semibold">{{ "{:,.2f}".format(r.circulation) }}</td>
+              <td class="fw-semibold">{{ "{:,.2f}".format(r.circulation_arrondie if r.circulation_arrondie is defined else r.circulation) }}
+                {% if r.circulation_brute is defined %}<div class="text-muted small">brute : {{ "{:,.2f}".format(r.circulation_brute) }}</div>{% endif %}
+              </td>
               <td>{{ "{:,.0f}".format(r.mec) }}</td>
               <td>{{ "{:,.2f}".format(r.rendement*100) }} %</td>
             </tr>

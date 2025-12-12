@@ -1,4 +1,10 @@
-# MellionCoin (clé en main) — V4 (Ordre détail cliquable)
+# MellionCoin (clé en main) — V10 (Objectifs + Alertes + Épingles)
+
+## Nouveautés V10
+- ⭐ Ordres favoris / épinglés (persistants par utilisateur) + affichage en haut.
+- ⏰ Alertes fin de cycle : J-3 / J-1 / AUJOURD'HUI (badge sur les ordres EN COURS).
+- 🎯 Projection avec objectif : « Atteindre X USDT → combien investir aujourd’hui ? » (dans Pilotage/Analytics).
+
 
 ## Comptes
 Dans `app.py` :
@@ -34,3 +40,23 @@ python app.py
 - Montant : min / max (investi initial estimé)
 - MEC : min / max
 - Recherche texte (id, dates, statut)
+
+
+## Nettoyage CSV
+Dans **Outils**, section **Nettoyage (CSV générés)** :
+- Supprimer répartitions MEC (Repartition_MEC_*.csv)
+- Supprimer dashboard + historique (Tableau_Bord.csv, historique_investissements.csv)
+- Supprimer tous les CSV
+
+Les détails d’ordres en JSON et les favoris ne sont pas supprimés.
+
+
+## Réinitialiser les données avant déploiement
+
+- Menu **Outils** → **Réinitialiser les données d’ordres**.
+- Une page d’avertissement te demande de confirmer avant suppression.
+- Cette action supprime les ordres (JSON), favoris/épinglés et CSV pour le compte connecté.
+
+## GitHub
+
+Le dossier `data/` est ignoré via `.gitignore` pour éviter de publier tes données par erreur.

@@ -31,3 +31,7 @@ body{ background:#f7f8fa; }
 .order-meta{ color:#7d7d7d; }
 .countdown{ color:#25d366; font-weight:800; }
 .status-paid{ color:#25d366; font-weight:900; letter-spacing:0.5px; }
+
+
+/* Favoris / épinglés */
+.order-card form button{line-height:1; font-size:18px; padding-top:2px; padding-bottom:2px;}

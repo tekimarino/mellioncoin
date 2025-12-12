@@ -227,10 +227,29 @@ def _parse_int(value: str) -> int:
         return 0
 
 
+def _round_to_multiple(amount: float, step: int = 500) -> float:
+    """Arrondi au multiple de `step` le plus proche (half-up).
+
+    Exemple: 48_980 -> 49_000 (step=500).
+    """
+    try:
+        x = float(amount)
+    except Exception:
+        return 0.0
+    if x <= 0:
+        return 0.0
+
+    # On travaille en centimes pour éviter les surprises des floats
+    cents = int(round(x * 100))
+    step_cents = int(step) * 100
+    res_cents = ((cents + (step_cents // 2)) // step_cents) * step_cents
+    return float(res_cents) / 100.0
+
+
 def project_reinvest_growth(start_x: float, cycles: int = 12, reinvest: bool = True):
     """Projection multi-cycles.
     Règle : à chaque cycle, la circulation (fin) devient le nouveau X (début).
-    Pour rester compatible avec la répartition (multiple de 500), on ajuste X au multiple de 500 inférieur si nécessaire.
+    Pour rester compatible avec la répartition (multiple de 500), on ajuste X au multiple de 500 le plus proche si nécessaire.
     Retourne une liste de dicts utilisables directement par Jinja.
     """
     try:
@@ -247,8 +266,8 @@ def project_reinvest_growth(start_x: float, cycles: int = 12, reinvest: bool = T
         if X <= 0:
             break
 
-        # Ajustement au multiple de 500 inférieur (compatibilité répartition)
-        X_adj = math.floor(X / 500) * 500
+        # Ajustement au multiple de 500 le plus proche (arrondi half-up)
+        X_adj = _round_to_multiple(X, 500)
         if X_adj <= 0:
             break
 
@@ -282,23 +301,86 @@ def project_reinvest_growth(start_x: float, cycles: int = 12, reinvest: bool = T
             mec_total = total_MEC_initial + (C_tm / MEC_VALUE)
             montant_investi = float(X_adj) + Sa
 
-        circulation = montant_investi + revenu_global
+        # Circulation (fin) = X (début) + revenu_global (cohérent avec le détail d'ordre)
+        circulation_brute = float(X_adj) + float(revenu_global)
+        circulation_arrondie = _round_to_multiple(circulation_brute, 500)
         rendement = (revenu_global / montant_investi) if montant_investi else 0.0
 
         out.append({
             "cycle_n": k,
             "X": round(float(X_adj), 2),
             "revenu_global": round(float(revenu_global), 2),
-            "circulation": round(float(circulation), 2),
+            # Valeur effectivement réutilisée pour le cycle suivant
+            "circulation": round(float(circulation_arrondie), 2),
+            "circulation_brute": round(float(circulation_brute), 2),
+            "circulation_arrondie": round(float(circulation_arrondie), 2),
+            "x_next": round(float(circulation_arrondie), 2),
             "mec": round(float(mec_total), 0),
             "rendement": float(rendement),
             "niveaux": int(n),
         })
 
-        # Circulation devient le X du cycle suivant
-        X = circulation
+        # Circulation arrondie devient le X du cycle suivant
+        X = circulation_arrondie
 
     return out
+
+
+def required_initial_for_target(target: float, cycles: int) -> dict:
+    """Calcule le X minimal (approx) pour atteindre au moins 'target' en 'cycles' cycles,
+    avec la règle de réinvestissement: circulation(fin) -> X(début) au cycle suivant.
+    Retourne {"required_x":..., "final":..., "cycles":...}
+    """
+    try:
+        target = float(target)
+    except Exception:
+        raise ValueError("Objectif invalide.")
+    if target <= 0:
+        raise ValueError("Objectif invalide.")
+    if cycles <= 0:
+        raise ValueError("Nombre de cycles invalide.")
+
+    def final_circulation(x: float) -> float:
+        rows = project_reinvest_growth(x, cycles=cycles, reinvest=True)
+        if not rows:
+            return 0.0
+        return float(rows[-1].get("circulation", 0.0))
+
+    # borne haute: on double jusqu'à dépasser l'objectif
+    low = 0.0
+    high = max(500.0, target)
+    fc = final_circulation(high)
+    guard = 0
+    while fc < target and guard < 60:
+        high *= 2.0
+        fc = final_circulation(high)
+        guard += 1
+
+    # dichotomie (tolérance ~ 1 USDT)
+    for _ in range(60):
+        mid = (low + high) / 2.0
+        if final_circulation(mid) >= target:
+            high = mid
+        else:
+            low = mid
+    req_x = max(0.0, high)
+
+    # ajustement à la règle multiple 500 (comme le moteur)
+    # on prend un multiple de 500, et on garantit d'atteindre l'objectif (arrondi puis éventuel +500)
+    req_x_adj = _round_to_multiple(req_x, 500)
+    if req_x_adj <= 0:
+        req_x_adj = 500.0
+
+    guard = 0
+    while final_circulation(req_x_adj) < target and guard < 50:
+        req_x_adj += 500.0
+        guard += 1
+
+    final_val = final_circulation(req_x_adj)
+    return {"required_x": req_x_adj, "final": final_val, "cycles": cycles}
+
+
+
 
 def _make_csv_bytes(fieldnames, rows):
     buf = io.StringIO()
@@ -416,12 +498,147 @@ def dashboard_path(username: str) -> str:
     return os.path.join(user_dir(username), "Tableau_Bord.csv")
 
 
+
+def favorites_path(username: str) -> str:
+    return os.path.join(user_dir(username), "favorites.json")
+
+
+def load_favorites(username: str) -> set:
+    """Retourne un set d'order_idx épinglés."""
+    path = favorites_path(username)
+    if not os.path.exists(path):
+        return set()
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f) or {}
+        fav = data.get("favorites", [])
+        return set(int(x) for x in fav)
+    except Exception:
+        return set()
+
+
+def save_favorites(username: str, fav_set: set) -> None:
+    path = favorites_path(username)
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"favorites": sorted(list(fav_set))}, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
 def history_path(username: str) -> str:
     return os.path.join(user_dir(username), "historique_investissements.csv")
 
 
+def reset_user_order_data(username: str) -> None:
+    """Réinitialise toutes les données liées aux ordres pour un utilisateur.
+    - Supprime ordres (JSON), favoris, CSV (dashboard/historique/répartitions), exports, etc.
+    - Ne touche pas aux comptes (auth) ni au journal global de sécurité.
+    """
+    base = os.path.join(DATA_DIR, username)
+    try:
+        shutil.rmtree(base)
+    except FileNotFoundError:
+        pass
+    except Exception:
+        # fallback: suppression sélective
+        try:
+            for root, dirs, files in os.walk(base):
+                for fn in files:
+                    try:
+                        os.remove(os.path.join(root, fn))
+                    except Exception:
+                        pass
+                for d in dirs:
+                    try:
+                        shutil.rmtree(os.path.join(root, d), ignore_errors=True)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+    os.makedirs(base, exist_ok=True)
+    os.makedirs(os.path.join(base, "orders"), exist_ok=True)
+
+
 def order_json_path(username: str, order_idx: int) -> str:
     return os.path.join(orders_dir(username), f"order_{order_idx}.json")
+
+def existing_order_indices(username: str):
+    idxs = []
+    try:
+        for name in os.listdir(orders_dir(username)):
+            m = re.match(r"order_(\d+)\.json$", name)
+            if m:
+                idxs.append(int(m.group(1)))
+    except FileNotFoundError:
+        pass
+    return sorted(set(idxs))
+
+
+def next_order_idx(username: str) -> int:
+    # ⚠️ Ne jamais se baser uniquement sur Tableau_Bord.csv (peut être supprimé)
+    idxs = existing_order_indices(username)
+    rows = load_dashboard(filename=dashboard_path(username))
+    max_from_csv = len(rows) - 1
+    max_from_json = max(idxs) if idxs else -1
+    return max(max_from_csv, max_from_json) + 1
+
+
+def migrate_dashboard_to_orders_json(username: str):
+    """Crée des JSON d'ordres (minimaux) à partir du Tableau_Bord.csv si besoin.
+    Objectif : garder les ordres visibles même si les CSV sont supprimés.
+    """
+    rows = load_dashboard(filename=dashboard_path(username))
+    for idx, r in enumerate(rows):
+        p = order_json_path(username, idx)
+        if os.path.exists(p):
+            continue
+
+        start_dt = _safe_dt(r.get("date_calcul", ""))
+        end_dt = _safe_dt(r.get("date_fin_cycle", ""))
+        cycle_days = 0
+        if start_dt and end_dt:
+            cycle_days = max(1, (end_dt - start_dt).days)
+
+        detail = {
+            "order_idx": idx,
+            "legacy": True,
+            "date_calcul": r.get("date_calcul", ""),
+            "date_fin_cycle": r.get("date_fin_cycle", ""),
+            "cycle": cycle_days or 28,
+
+            # champs legacy (issus du CSV)
+            "montant_investi": r.get("montant_investi", ""),
+            "interets": r.get("interets", ""),
+            "commissions": r.get("commissions", ""),
+            "commission_supplementaire": r.get("commission_supplementaire", ""),
+            "revenu_global": r.get("revenu_global", ""),
+            "MEC": r.get("MEC", ""),
+            "circulation": r.get("circulation", ""),
+            "circulation_arrondie": float(_round_to_multiple(_parse_money(r.get("circulation", "0")), 500)) if str(r.get("circulation", "")).strip() else "",
+            "x_next": float(_round_to_multiple(_parse_money(r.get("circulation", "0")), 500)) if str(r.get("circulation", "")).strip() else "",
+            "rendement": r.get("rendement", ""),
+
+            # champs “moteur” (compat template détail)
+            "Revenu_global": float(_parse_money(r.get("revenu_global", "0"))),
+            "circulation_val": float(_parse_money(r.get("circulation", "0"))),
+            "circulation": float(_parse_money(r.get("circulation", "0"))),
+            "circulation_arrondie": float(_round_to_multiple(_parse_money(r.get("circulation", "0")), 500)),
+            "x_next": float(_round_to_multiple(_parse_money(r.get("circulation", "0")), 500)),
+            "total_I": float(_parse_money(r.get("interets", "0"))),
+            "total_C": float(_parse_money(r.get("commissions", "0"))),
+            "Com_supp": float(_parse_money(r.get("commission_supplementaire", "0"))),
+            "total_MEC_global": float(_parse_int(r.get("MEC", "0"))),
+            "montant_investi_val": float(_parse_money(r.get("montant_investi", "0"))),
+            "montant_investi": float(_parse_money(r.get("montant_investi", "0"))),
+            "rendement": float(_parse_money(r.get("rendement", "0"))),
+        }
+        # Nettoyage : double clé circulation_val pour éviter confusion
+        detail.pop("circulation_val", None)
+
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(detail, f, ensure_ascii=False, indent=2)
 
 
 def next_repartition_filename(username: str) -> str:
@@ -481,9 +698,9 @@ def run_simulation(username: str, X: float, reinvest: bool):
     date_norm = now.strftime(DATE_FMT)
     date_fin_cycle = (now + timedelta(days=cycle)).strftime(DATE_FMT)
 
-    # ✅ index de l’ordre (lié à la ligne du dashboard)
-    existing = load_dashboard(filename=dashboard_path(username))
-    order_idx = len(existing)
+    # ✅ index de l’ordre (robuste même si les CSV sont supprimés)
+    migrate_dashboard_to_orders_json(username)
+    order_idx = next_order_idx(username)
 
     n_opt, mec, caps = optimized_distribution(X)
     repart_file = save_repartition_csv_user(username, mec, caps)
@@ -531,6 +748,10 @@ def run_simulation(username: str, X: float, reinvest: bool):
 
     # ✅ Circulation (cohérent avec ton tableau de bord)
     circulation = Revenu_global + montant_investi - Sa
+
+    # ✅ Circulation arrondie (multiple de 500) : utilisée pour l'ordre suivant et les projections
+    circulation_arrondie = _round_to_multiple(circulation, 500)
+    x_next = circulation_arrondie
 
     niveaux = []
     for idx, (m, cap, i_val, c_val) in enumerate(zip(mec, caps, interets, commissions)):
@@ -592,6 +813,8 @@ def run_simulation(username: str, X: float, reinvest: bool):
         "Com_supp": float(Com_supp),
         "Revenu_global": float(Revenu_global),
         "circulation": float(circulation),
+        "circulation_arrondie": float(circulation_arrondie),
+        "x_next": float(x_next),
         "total_MEC_initial": float(total_MEC_initial),
         "total_MEC_global": float(total_MEC_global),
         "montant_investi": float(montant_investi),
@@ -652,6 +875,20 @@ def login():
     return render_template("login.html", users=list(users.keys()))
 
 
+
+@app.post("/orders/favorite/<int:order_idx>")
+@login_required
+def orders_toggle_favorite(order_idx: int):
+    username = session["user"]
+    fav_set = load_favorites(username)
+    if order_idx in fav_set:
+        fav_set.remove(order_idx)
+    else:
+        fav_set.add(order_idx)
+    save_favorites(username, fav_set)
+    return redirect(request.referrer or url_for("orders"))
+
+
 @app.route("/logout")
 @login_required
 def logout():
@@ -666,7 +903,18 @@ def logout():
 @app.route("/")
 @login_required
 def index():
-    return render_template("index.html")
+    # Permet de pré-remplir X depuis la page Résultats/Détail d'ordre
+    raw = (request.args.get("prefill_x") or "").strip()
+    prefill_x = ""
+    if raw:
+        try:
+            val = float(raw.replace(",", ""))
+            if val > 0:
+                # Respecter la règle : X doit être un multiple de 500
+                prefill_x = str(int(_round_to_multiple(val, 500)))
+        except Exception:
+            prefill_x = ""
+    return render_template("index.html", prefill_x=prefill_x)
 
 
 @app.route("/simulate", methods=["POST"])
@@ -785,12 +1033,23 @@ def analytics():
 
     adjusted = False
     if start_x > 0 and (start_x % 500 != 0):
-        start_x = math.floor(start_x / 500) * 500
+        start_x = _round_to_multiple(start_x, 500)
         adjusted = True
 
     projection_rows = []
     proj_3 = proj_6 = proj_12 = None
     proj_err = None
+
+    # Objectif: atteindre un montant cible en N cycles
+    obj_target_raw = request.args.get("target", "").strip()
+    obj_cycles_raw = request.args.get("target_cycles", "12").strip()
+    if obj_cycles_raw not in {"3", "6", "12"}:
+        obj_cycles_raw = "12"
+    obj_cycles = int(obj_cycles_raw)
+    obj_required_x = None
+    obj_final = None
+    obj_err = None
+    obj_target_val = None
     if start_x > 0:
         # règle reinvest : activé si X >= 3000
         reinvest_flag = True
@@ -801,6 +1060,17 @@ def analytics():
             proj_12 = projection_rows[11]["circulation"] if len(projection_rows) >= 12 else None
         except Exception as e:
             proj_err = str(e)
+
+    # calcul objectif (si renseigné)
+    if obj_target_raw:
+        try:
+            target_val = _parse_money(obj_target_raw)
+            obj_target_val = target_val
+            out_obj = required_initial_for_target(target_val, cycles=obj_cycles)
+            obj_required_x = out_obj["required_x"]
+            obj_final = out_obj["final"]
+        except Exception as e:
+            obj_err = str(e)
 
     return render_template(
         "analytics.html",
@@ -823,14 +1093,75 @@ def analytics():
         proj_6=proj_6,
         proj_12=proj_12,
         proj_err=proj_err,
+        obj_target=obj_target_raw,
+        obj_cycles=obj_cycles_raw,
+        obj_required_x=obj_required_x,
+        obj_final=obj_final,
+        obj_err=obj_err,
+        obj_target_val=obj_target_val,
     )
 
 
 @app.route("/tools")
 @login_required
 def tools():
-    return render_template("tools.html")
+    username = session["user"]
+    base = user_dir(username)
+    csv_files = []
+    try:
+        csv_files = sorted([f for f in os.listdir(base) if f.lower().endswith(".csv")])
+    except Exception:
+        csv_files = []
+    return render_template("tools.html", csv_files=csv_files)
 
+
+
+@app.route("/cleanup/csv", methods=["POST"])
+@login_required
+def cleanup_csv():
+    username = session["user"]
+    action = (request.form.get("action") or "").strip().lower()
+    base = user_dir(username)
+
+    removed = []
+    errors = []
+
+    def _safe_remove(path):
+        try:
+            os.remove(path)
+            removed.append(os.path.basename(path))
+        except FileNotFoundError:
+            pass
+        except Exception as e:
+            errors.append(f"{os.path.basename(path)}: {e}")
+
+    if action == "repartition":
+        for name in os.listdir(base):
+            if name.startswith("Repartition_MEC_") and name.lower().endswith(".csv"):
+                _safe_remove(os.path.join(base, name))
+
+    elif action == "dashboard_history":
+        _safe_remove(os.path.join(base, "Tableau_Bord.csv"))
+        _safe_remove(os.path.join(base, "historique_investissements.csv"))
+
+    elif action == "all":
+        for name in os.listdir(base):
+            if name.lower().endswith(".csv"):
+                _safe_remove(os.path.join(base, name))
+
+    else:
+        flash("Action de nettoyage invalide.", "danger")
+        return redirect(url_for("tools"))
+
+    if removed:
+        flash(f"{len(removed)} fichier(s) CSV supprimé(s) : " + ", ".join(removed[:8]) + ("..." if len(removed) > 8 else ""), "success")
+    else:
+        flash("Aucun fichier CSV à supprimer pour cette action.", "info")
+
+    if errors:
+        flash("Certains fichiers n'ont pas pu être supprimés : " + "; ".join(errors[:3]) + ("..." if len(errors) > 3 else ""), "warning")
+
+    return redirect(url_for("tools"))
 
 @app.route("/backup/download")
 @login_required
@@ -1111,34 +1442,77 @@ def export_orders(fmt: str):
 @login_required
 def orders():
     username = session["user"]
-    rows = load_dashboard(filename=dashboard_path(username))
+
+    # ✅ on migre le CSV → JSON (si besoin), pour que les ordres restent visibles même après suppression des CSV
+    migrate_dashboard_to_orders_json(username)
+
     now = datetime.now()
+    fav_set = load_favorites(username)
+
+    def _as_float(v, default=0.0):
+        try:
+            if v is None:
+                return float(default)
+            if isinstance(v, (int, float)):
+                return float(v)
+            return float(_parse_money(str(v)))
+        except Exception:
+            return float(default)
+
+    def _as_int(v, default=0):
+        try:
+            if v is None:
+                return int(default)
+            if isinstance(v, int):
+                return int(v)
+            if isinstance(v, float):
+                return int(v)
+            return int(_parse_int(str(v)))
+        except Exception:
+            return int(default)
 
     all_orders = []
-    for idx, r in enumerate(rows):
-        start_dt = _safe_dt(r.get("date_calcul", ""))
-        end_dt = _safe_dt(r.get("date_fin_cycle", ""))
+    for order_idx in existing_order_indices(username):
+        p = order_json_path(username, order_idx)
+        try:
+            with open(p, "r", encoding="utf-8") as f:
+                d = json.load(f) or {}
+        except Exception:
+            continue
+
+        start_dt = _safe_dt(d.get("date_calcul", ""))
+        end_dt = _safe_dt(d.get("date_fin_cycle", ""))
         if not start_dt or not end_dt:
             continue
 
-        cycle_days = max(1, (end_dt - start_dt).days)
-        revenu = _parse_money(r.get("revenu_global", "0"))
-        circ = _parse_money(r.get("circulation", "0"))
-        investi_initial_val = max(0.0, circ - revenu)
+        cycle_days = int(d.get("cycle") or max(1, (end_dt - start_dt).days))
 
-        mec_val = _parse_int(r.get("MEC", "0"))
+        circ = _as_float(d.get("circulation", 0))
+        revenu = _as_float(d.get("Revenu_global", d.get("revenu_global", 0)))
+        montant_investi = _as_float(d.get("montant_investi", max(0.0, circ - revenu)))
+        investi_initial_val = montant_investi
+
+        mec_val = _as_int(d.get("total_MEC_global", d.get("MEC", 0)))
 
         is_paid = end_dt <= now
         remaining = 0 if is_paid else max(0, int((end_dt - now).total_seconds()))
 
-        # détail dispo si le JSON existe
-        detail_ok = os.path.exists(order_json_path(username, idx))
+        # ✅ Alertes fin de cycle (J-3 / J-1 / aujourd'hui)
+        alert_badge = ""
+        if not is_paid:
+            days_left = (end_dt.date() - now.date()).days
+            if days_left == 0:
+                alert_badge = "AUJOURD'HUI"
+            elif days_left == 1:
+                alert_badge = "J-1"
+            elif days_left == 3:
+                alert_badge = "J-3"
 
         all_orders.append({
-            "order_idx": idx,
+            "order_idx": order_idx,
             "start_dt": start_dt,
-            "date_calcul": r.get("date_calcul", ""),
-            "date_fin_cycle": r.get("date_fin_cycle", ""),
+            "date_calcul": d.get("date_calcul", ""),
+            "date_fin_cycle": d.get("date_fin_cycle", ""),
             "cycle_days": cycle_days,
             "investi_initial": f"{investi_initial_val:,.2f}",
             "investi_initial_val": investi_initial_val,
@@ -1146,9 +1520,11 @@ def orders():
             "circulation_val": circ,
             "remaining": remaining,
             "paid": is_paid,
-            "MEC": r.get("MEC", "0"),
+            "MEC": str(mec_val),
             "mec_val": mec_val,
-            "detail_ok": detail_ok
+            "favorite": (order_idx in fav_set),
+            "alert_badge": alert_badge,
+            "detail_ok": True
         })
 
     # ✅ plus récent → plus ancien
@@ -1220,6 +1596,9 @@ def orders():
 
         filtered.append(o)
 
+    # ✅ épinglés en haut, puis plus récent → plus ancien
+    filtered.sort(key=lambda x: (0 if x.get('favorite') else 1, -x['start_dt'].timestamp()))
+
     total_all = len(all_orders)
     total = len(filtered)
 
@@ -1285,6 +1664,9 @@ def orders():
 def order_detail(order_idx: int):
     username = session["user"]
 
+    # ✅ assure que les JSON d'ordres existent (migration CSV → JSON)
+    migrate_dashboard_to_orders_json(username)
+
     # sécurité de base
     if order_idx < 0:
         abort(404)
@@ -1312,6 +1694,8 @@ def order_detail(order_idx: int):
             "revenu_global": r.get("revenu_global", ""),
             "MEC": r.get("MEC", ""),
             "circulation": r.get("circulation", ""),
+            "circulation_arrondie": float(_round_to_multiple(_parse_money(r.get("circulation", "0")), 500)),
+            "x_next": float(_round_to_multiple(_parse_money(r.get("circulation", "0")), 500)),
             "rendement": r.get("rendement", ""),
             "niveaux": []
         }
@@ -1381,6 +1765,39 @@ def change_password():
         return redirect(url_for("security"))
 
     return render_template("change_password.html")
+
+
+@app.route("/reset-orders", methods=["GET", "POST"])
+@login_required
+def reset_orders():
+    """Réinitialise TOUTES les données d'ordres (pour le compte connecté)."""
+    username = session["user"]
+
+    if request.method == "POST":
+        if request.form.get("confirm", "") != "yes":
+            flash("Réinitialisation annulée.", "info")
+            return redirect(url_for("tools"))
+
+        ip = _client_ip()
+        ua = request.headers.get("User-Agent", "")
+        audit_event(username, "reset_orders_data", ip, ua)
+
+        reset_user_order_data(username)
+        flash("Données réinitialisées : ordres, favoris et CSV supprimés pour ce compte.", "success")
+        return redirect(url_for("orders"))
+
+    # GET: afficher un avertissement + un petit résumé
+    try:
+        order_count = len([n for n in os.listdir(orders_dir(username)) if n.lower().endswith(".json")])
+    except Exception:
+        order_count = 0
+
+    try:
+        csv_count = len([n for n in os.listdir(user_dir(username)) if n.lower().endswith(".csv")])
+    except Exception:
+        csv_count = 0
+
+    return render_template("reset_orders.html", order_count=order_count, csv_count=csv_count)
 
 if __name__ == "__main__":
     app.run(debug=True)
