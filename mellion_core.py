@@ -348,6 +348,7 @@ def append_dashboard(row, filename=DASHBOARD_FILE):
     fieldnames = [
         "date_calcul",
         "date_fin_cycle",
+        "client",
         "montant_investi",
         "interets",
         "commissions",
@@ -355,6 +356,8 @@ def append_dashboard(row, filename=DASHBOARD_FILE):
         "revenu_global",
         "MEC",
         "circulation",
+        "circulation_arrondie",
+        "x_next",
         "rendement"
     ]
     with open(filename, "a", newline='', encoding="utf-8") as f:

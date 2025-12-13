@@ -1,30 +1,157 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h4 class="mb-0">Tableau de bord</h4>
+  <div>
+    <h4 class="mb-0">Tableau de bord — Business</h4>
+    <div class="text-muted small">{{ kpis.count if kpis else 0 }} enregistrement(s) affiché(s)</div>
+  </div>
   <div class="btn-group">
     <a class="btn btn-outline-primary btn-sm" href="{{ url_for('export_dashboard', fmt='csv') }}">Exporter CSV</a>
     <a class="btn btn-outline-primary btn-sm" href="{{ url_for('export_dashboard', fmt='pdf') }}">Exporter PDF</a>
   </div>
 </div>
 
+{% if rows %}
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-lg-2">
+      <div class="card shadow-sm">
+        <div class="card-body py-2">
+          <div class="text-muted small">Total investi</div>
+          <div class="fw-semibold">{{ "{:,.2f}".format(kpis.total_investi) }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-2">
+      <div class="card shadow-sm">
+        <div class="card-body py-2">
+          <div class="text-muted small">Total revenus</div>
+          <div class="fw-semibold">{{ "{:,.2f}".format(kpis.total_revenus) }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-2">
+      <div class="card shadow-sm">
+        <div class="card-body py-2">
+          <div class="text-muted small">Intérêts cumulés</div>
+          <div class="fw-semibold">{{ "{:,.2f}".format(kpis.total_interets) }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-2">
+      <div class="card shadow-sm">
+        <div class="card-body py-2">
+          <div class="text-muted small">Commissions cumulées</div>
+          <div class="fw-semibold">{{ "{:,.2f}".format(kpis.total_commissions) }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-2">
+      <div class="card shadow-sm">
+        <div class="card-body py-2">
+          <div class="text-muted small">Rendement moyen</div>
+          <div class="fw-semibold">{{ "{:,.2f}".format(kpis.rendement_moyen) }} %</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-2">
+      <div class="card shadow-sm">
+        <div class="card-body py-2">
+          <div class="text-muted small">Meilleure période</div>
+          <div class="fw-semibold">
+            {% if kpis.best_period %}
+              {{ kpis.best_period }}
+              <div class="text-muted small">({{ "{:,.2f}".format(kpis.best_period_value) }})</div>
+            {% else %}
+              —
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <form method="get" action="{{ url_for('dashboard') }}" class="row g-2 align-items-end" id="filtersForm">
+      <div class="col-12 col-md-2">
+        <label class="form-label mb-1">Mois</label>
+        <select class="form-select" name="month" id="monthSelect">
+          <option value="">Tous</option>
+          {% for m in months %}
+            <option value="{{ m }}" {% if sel_month==m %}selected{% endif %}>{{ m }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-12 col-md-2">
+        <label class="form-label mb-1">Trimestre</label>
+        <select class="form-select" name="quarter" id="quarterSelect">
+          <option value="">Tous</option>
+          {% for qtr in quarters %}
+            <option value="{{ qtr }}" {% if sel_quarter==qtr %}selected{% endif %}>{{ qtr }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-12 col-md-3">
+        <label class="form-label mb-1">Client</label>
+        <select class="form-select" name="client">
+          <option value="">Tous</option>
+          {% for c in clients %}
+            <option value="{{ c }}" {% if sel_client==c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-12 col-md-2">
+        <label class="form-label mb-1">Statut</label>
+        <select class="form-select" name="status">
+          <option value="">Tous</option>
+          {% for s in statuses %}
+            <option value="{{ s }}" {% if sel_status==s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-12 col-md-3">
+        <label class="form-label mb-1">Recherche</label>
+        <input type="text" class="form-control" name="q" value="{{ q }}" placeholder="client, date, montant, statut...">
+      </div>
+
+      <div class="col-12 d-flex gap-2 mt-2">
+        <button class="btn btn-primary" type="submit">Filtrer</button>
+        <a class="btn btn-outline-secondary" href="{{ url_for('dashboard') }}">Réinitialiser</a>
+      </div>
+    </form>
+
+    <div class="form-text mt-2">
+      Astuce : sélectionne un <b>mois</b> ou un <b>trimestre</b> (pas les deux). Si tu choisis l’un, l’autre se désactive.
+    </div>
+  </div>
+</div>
+
 {% if not rows %}
-  <div class="alert alert-info">Aucun enregistrement pour le moment.</div>
+  <div class="alert alert-info">Aucun enregistrement pour le moment (ou aucun résultat pour tes filtres).</div>
 {% else %}
   <div class="table-responsive card shadow-sm">
     <table class="table table-sm table-striped mb-0">
       <thead class="table-light">
         <tr>
           <th>Date calcul</th>
-          <th>Date fin</th>
-          <th>Montant investi</th>
-          <th>Intérêts</th>
-          <th>Commissions</th>
-          <th>Com. suppl.</th>
-          <th>Revenu global</th>
-          <th>MEC</th>
-          <th>Circulation</th>
-          <th>Rendement</th>
+          <th>Fin cycle</th>
+          <th>Client</th>
+          <th>Statut</th>
+          <th class="text-end">Investi</th>
+          <th class="text-end">Intérêts</th>
+          <th class="text-end">Commissions</th>
+          <th class="text-end">Com. supp.</th>
+          <th class="text-end">Revenu global</th>
+          <th class="text-end">MEC</th>
+          <th class="text-end">Circulation</th>
+          <th class="text-end">Circ. arr.</th>
+          <th class="text-end">X suivant</th>
+          <th class="text-end">Rendement</th>
         </tr>
       </thead>
       <tbody>
@@ -32,18 +159,57 @@
         <tr>
           <td>{{ row.date_calcul }}</td>
           <td>{{ row.date_fin_cycle }}</td>
-          <td>{{ row.montant_investi }}</td>
-          <td>{{ row.interets }}</td>
-          <td>{{ row.commissions }}</td>
-          <td>{{ row.commission_supplementaire }}</td>
-          <td>{{ row.revenu_global }}</td>
-          <td>{{ row.MEC }}</td>
-          <td>{{ row.circulation }}</td>
-          <td>{{ row.rendement }}</td>
+          <td>{{ row.client }}</td>
+          <td>
+            {% if row.statut == "EN COURS" %}
+              <span class="badge text-bg-warning">EN COURS</span>
+            {% else %}
+              <span class="badge text-bg-success">TERMINÉ</span>
+            {% endif %}
+          </td>
+          <td class="text-end">{{ row.montant_investi }}</td>
+          <td class="text-end">{{ row.interets }}</td>
+          <td class="text-end">{{ row.commissions }}</td>
+          <td class="text-end">{{ row.commission_supplementaire }}</td>
+          <td class="text-end fw-semibold">{{ row.revenu_global }}</td>
+          <td class="text-end">{{ row.MEC }}</td>
+          <td class="text-end">{{ row.circulation }}</td>
+          <td class="text-end">{{ row.circulation_arrondie }}</td>
+          <td class="text-end">{{ row.x_next }}</td>
+          <td class="text-end">{{ row.rendement }}</td>
         </tr>
       {% endfor %}
       </tbody>
     </table>
   </div>
 {% endif %}
+
+<script>
+(function() {
+  const m = document.getElementById('monthSelect');
+  const q = document.getElementById('quarterSelect');
+
+  function sync() {
+    if (m.value) {
+      q.disabled = true;
+      q.value = '';
+    } else {
+      q.disabled = false;
+    }
+    if (q.value) {
+      m.disabled = true;
+      m.value = '';
+    } else {
+      m.disabled = false;
+    }
+  }
+  if (m && q) {
+    m.addEventListener('change', sync);
+    q.addEventListener('change', sync);
+    // initial
+    sync();
+  }
+})();
+</script>
+
 {% endblock %}

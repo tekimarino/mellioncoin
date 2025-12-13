@@ -45,9 +45,8 @@ INACTIVITY_TIMEOUT_MINUTES = 15
 
 DEFAULT_USERS = {
     "marinoteki": "Ivan2012@",
-    "Arkad": "Compta225@"
+    "Arkad": "Compta225@",
 }
-
 
 def _now_iso():
     return datetime.now().isoformat(timespec="seconds")
@@ -73,10 +72,25 @@ def _save_json(path: str, data):
 def load_users():
     data = _load_json(USERS_FILE, {"users": {}})
     users = data.get("users", {})
-    # Initialisation si fichier absent/vide
+    # Initialisation / migration
+    # 1) Si fichier absent/vide → créer les comptes par défaut
     if not users:
         users = {u: {"password_hash": generate_password_hash(p)} for u, p in DEFAULT_USERS.items()}
         _save_json(USERS_FILE, {"users": users})
+    else:
+        # 2) Si on détecte les comptes "placeholder", on les remplace par les vrais comptes par défaut
+        if set(users.keys()) == {"user1", "user2"}:
+            users = {u: {"password_hash": generate_password_hash(p)} for u, p in DEFAULT_USERS.items()}
+            _save_json(USERS_FILE, {"users": users})
+        else:
+            # 3) S'il reste de la place (max 2), on ajoute les comptes par défaut manquants
+            changed = False
+            for u, p in DEFAULT_USERS.items():
+                if u not in users and len(users) < 2:
+                    users[u] = {"password_hash": generate_password_hash(p)}
+                    changed = True
+            if changed:
+                _save_json(USERS_FILE, {"users": users})
     # Forcer 2 comptes max (si quelqu’un modifie le fichier)
     allowed = list(DEFAULT_USERS.keys())
     users = {k: v for k, v in users.items() if k in allowed}
@@ -391,10 +405,10 @@ def _make_csv_bytes(fieldnames, rows):
     return buf.getvalue().encode("utf-8")
 
 
-def _make_pdf_bytes(title, headers, rows):
+def _make_pdf_bytes(title, headers, rows, landscape_mode=False):
     """Génère un PDF. Si reportlab n'est pas installé, lève RuntimeError."""
     try:
-        from reportlab.lib.pagesizes import letter
+        from reportlab.lib.pagesizes import letter, landscape
         from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
         from reportlab.lib import colors
         from reportlab.lib.styles import getSampleStyleSheet
@@ -403,21 +417,47 @@ def _make_pdf_bytes(title, headers, rows):
 
     pdf = io.BytesIO()
     styles = getSampleStyleSheet()
-    doc = SimpleDocTemplate(pdf, pagesize=letter, rightMargin=24, leftMargin=24, topMargin=24, bottomMargin=24)
+    pagesize = landscape(letter) if landscape_mode else letter
+    doc = SimpleDocTemplate(pdf, pagesize=pagesize, rightMargin=24, leftMargin=24, topMargin=24, bottomMargin=24)
     story = []
     story.append(Paragraph(title, styles['Title']))
     story.append(Spacer(1, 12))
     data = [headers]
     for r in rows:
         data.append([str(r.get(h, '')) for h in headers])
-    t = Table(data, repeatRows=1)
+    # Calcul de largeurs de colonnes pour que tout tienne sur la page
+    ncols = len(headers)
+    # estimation: largeur ~ nb caractères * facteur + padding
+    char_pt = 4.5  # approx pour fontsize 8
+    max_sample = rows[:50] if isinstance(rows, list) else rows
+    raw_widths = []
+    for h in headers:
+        max_chars = len(str(h))
+        for r in max_sample:
+            try:
+                max_chars = max(max_chars, len(str(r.get(h, ""))))
+            except Exception:
+                pass
+        # bornes raisonnables
+        w = max(50, min(180, max_chars * char_pt + 12))
+        raw_widths.append(w)
+    total_raw = sum(raw_widths) or 1
+    avail = doc.width
+    if total_raw > avail:
+        scale = avail / total_raw
+        col_widths = [max(40, w * scale) for w in raw_widths]
+    else:
+        # on garde les largeurs calculées (ReportLab complètera l'espace)
+        col_widths = raw_widths
+
+    t = Table(data, repeatRows=1, colWidths=col_widths, hAlign='LEFT')
     t.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0d6efd')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        ('FONTSIZE', (0, 0), (-1, 0), 8),
         ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
-        ('FONTSIZE', (0, 1), (-1, -1), 8),
+        ('FONTSIZE', (0, 1), (-1, -1), 7),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
     ]))
     story.append(t)
@@ -472,11 +512,13 @@ def _read_csv_any_delimiter(file_bytes: bytes):
     return reader.fieldnames or [], rows
 
 
-EXPECTED_DASHBOARD_HEADERS = [
-    "date_calcul", "date_fin_cycle", "montant_investi", "interets", "commissions",
-    "commission_supplementaire", "revenu_global", "MEC", "circulation", "rendement"
+REQUIRED_DASHBOARD_HEADERS = [
+    "date_calcul", "date_fin_cycle", "montant_investi", "interets", "commissions", "commission_supplementaire", "revenu_global", "MEC", "circulation", "rendement"
 ]
 
+DASHBOARD_HEADERS = REQUIRED_DASHBOARD_HEADERS + [
+    "client", "circulation_arrondie", "x_next"
+]
 EXPECTED_HISTORY_HEADERS = [
     "date", "investissement", "interets", "commissions_totales", "commission_supplementaire",
     "revenu_global", "nombre_MEC", "rendement", "cycle", "taux_interet"
@@ -496,6 +538,33 @@ def orders_dir(username: str) -> str:
 
 def dashboard_path(username: str) -> str:
     return os.path.join(user_dir(username), "Tableau_Bord.csv")
+
+
+def _ensure_dashboard_csv_headers(path: str):
+    """Si le Tableau_Bord.csv existe avec un ancien header, le réécrit avec les nouveaux champs."""
+    if not os.path.exists(path):
+        return
+    try:
+        with open(path, "r", encoding="utf-8", newline="") as f:
+            reader = csv.reader(f, delimiter=";")
+            headers = next(reader, None)
+        if not headers:
+            return
+        headers = [h.strip() for h in headers]
+        if all(h in headers for h in DASHBOARD_HEADERS):
+            return
+
+        with open(path, newline="", encoding="utf-8") as f:
+            dr = csv.DictReader(f, delimiter=";")
+            rows = list(dr)
+
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            dw = csv.DictWriter(f, fieldnames=DASHBOARD_HEADERS, delimiter=";")
+            dw.writeheader()
+            for r in rows:
+                dw.writerow({h: r.get(h, "") for h in DASHBOARD_HEADERS})
+    except Exception:
+        return
 
 
 
@@ -607,6 +676,7 @@ def migrate_dashboard_to_orders_json(username: str):
             "date_calcul": r.get("date_calcul", ""),
             "date_fin_cycle": r.get("date_fin_cycle", ""),
             "cycle": cycle_days or 28,
+            "client": r.get("client", ""),
 
             # champs legacy (issus du CSV)
             "montant_investi": r.get("montant_investi", ""),
@@ -684,7 +754,7 @@ def _safe_dt(s: str):
         return None
 
 
-def run_simulation(username: str, X: float, reinvest: bool):
+def run_simulation(username: str, X: float, reinvest: bool, client: str = ""):
     if X <= 0:
         raise ValueError("Le montant X doit être strictement positif.")
     if X % 500 != 0:
@@ -780,9 +850,12 @@ def run_simulation(username: str, X: float, reinvest: bool):
         "taux_interet": f"{taux_cycle*100:.2f}%"
     }, filename=history_path(username))
 
+    _ensure_dashboard_csv_headers(dashboard_path(username))
+
     append_dashboard({
         "date_calcul": date_norm,
         "date_fin_cycle": date_fin_cycle,
+        "client": client,
         "montant_investi": f"{montant_investi:,.2f}",
         "interets": f"{total_I:,.2f}",
         "commissions": f"{total_C:,.2f}",
@@ -790,12 +863,15 @@ def run_simulation(username: str, X: float, reinvest: bool):
         "revenu_global": f"{Revenu_global:,.2f}",
         "MEC": f"{total_MEC_global:,.0f}",
         "circulation": f"{circulation:,.2f}",
+        "circulation_arrondie": f"{circulation_arrondie:,.2f}",
+        "x_next": f"{x_next:,.2f}",
         "rendement": f"{r*100:,.2f} %"
     }, filename=dashboard_path(username))
 
     # ✅ Sauvegarde détaillée (JSON) pour la page “Détail d’un ordre”
     detail = {
         "order_idx": order_idx,
+        "client": client,
         "date_calcul": date_norm,
         "date_fin_cycle": date_fin_cycle,
         "cycle": cycle,
@@ -928,8 +1004,11 @@ def simulate():
 
     reinvest = (request.form.get("reinvest", "oui").lower() in ("oui", "o", "yes", "y"))
 
+    client = (request.form.get("client", "") or "").strip()
+
+
     try:
-        detail = run_simulation(session["user"], X, reinvest)
+        detail = run_simulation(session["user"], X, reinvest, client=client)
     except ValueError as e:
         flash(str(e), "danger")
         return redirect(url_for("index"))
@@ -941,8 +1020,147 @@ def simulate():
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    rows = load_dashboard(filename=dashboard_path(session["user"]))
-    return render_template("dashboard.html", rows=rows)
+    username = session["user"]
+    rows = load_dashboard(filename=dashboard_path(username))
+    now = datetime.now()
+
+    enriched = []
+    months = set()
+    quarters = set()
+    clients = set()
+
+    for r in rows:
+        rr = dict(r)
+        rr.setdefault("client", "")
+        rr.setdefault("circulation_arrondie", "")
+        rr.setdefault("x_next", "")
+
+        end_dt = _safe_dt(rr.get("date_fin_cycle", ""))
+        rr["statut"] = "EN COURS" if (end_dt and end_dt > now) else "TERMINÉ"
+
+        dt = end_dt or _safe_dt(rr.get("date_calcul", ""))
+        if dt:
+            month = dt.strftime("%Y-%m")
+            qn = ((dt.month - 1) // 3) + 1
+            quarter = f"{dt.year}-Q{qn}"
+        else:
+            month = ""
+            quarter = ""
+
+        rr["_month"] = month
+        rr["_quarter"] = quarter
+
+        if month:
+            months.add(month)
+        if quarter:
+            quarters.add(quarter)
+        if rr.get("client", "").strip():
+            clients.add(rr["client"].strip())
+
+        enriched.append(rr)
+
+    months_sorted = sorted(months, reverse=True)
+
+    def _q_key(s):
+        try:
+            y, qv = s.split("-Q")
+            return (int(y), int(qv))
+        except Exception:
+            return (0, 0)
+
+    quarters_sorted = sorted(quarters, key=_q_key, reverse=True)
+    clients_sorted = sorted(clients)
+
+    # Filtres (Option B)
+    sel_month = request.args.get("month", "").strip()
+    sel_quarter = request.args.get("quarter", "").strip()
+    if sel_month:
+        sel_quarter = ""
+    if sel_quarter:
+        sel_month = ""
+
+    sel_client = request.args.get("client", "").strip()
+    sel_status = request.args.get("status", "").strip()
+    q = request.args.get("q", "").strip().lower()
+
+    filtered = []
+    for rr in enriched:
+        if sel_month and rr.get("_month", "") != sel_month:
+            continue
+        if sel_quarter and rr.get("_quarter", "") != sel_quarter:
+            continue
+        if sel_client and rr.get("client", "").strip() != sel_client:
+            continue
+        if sel_status and rr.get("statut", "") != sel_status:
+            continue
+        if q:
+            hay = " ".join(str(rr.get(k, "")) for k in (DASHBOARD_HEADERS + ["statut"]))
+            if q not in hay.lower():
+                continue
+        filtered.append(rr)
+
+    def _p_money(v):
+        try:
+            return float(_parse_money(str(v or "0")))
+        except Exception:
+            return 0.0
+
+    def _p_percent(v):
+        try:
+            s = str(v or "").replace("%", "").replace(" ", "").replace(",", "")
+            return float(s) if s else None
+        except Exception:
+            return None
+
+    total_investi = sum(_p_money(r.get("montant_investi")) for r in filtered)
+    total_revenus = sum(_p_money(r.get("revenu_global")) for r in filtered)
+    total_interets = sum(_p_money(r.get("interets")) for r in filtered)
+    total_commissions = sum(_p_money(r.get("commissions")) for r in filtered)
+
+    rendements = []
+    for r in filtered:
+        pv = _p_percent(r.get("rendement"))
+        if pv is not None:
+            rendements.append(pv)
+    rendement_moyen = (sum(rendements) / len(rendements)) if rendements else 0.0
+
+    # Meilleure période (meilleur mois par Revenu_global)
+    best_period = ""
+    best_value = 0.0
+    by_month = {}
+    for r in filtered:
+        m = r.get("_month", "")
+        if not m:
+            continue
+        by_month[m] = by_month.get(m, 0.0) + _p_money(r.get("revenu_global"))
+    if by_month:
+        best_period, best_value = max(by_month.items(), key=lambda kv: kv[1])
+
+    kpis = {
+        "total_investi": total_investi,
+        "total_revenus": total_revenus,
+        "total_interets": total_interets,
+        "total_commissions": total_commissions,
+        "rendement_moyen": rendement_moyen,
+        "best_period": best_period,
+        "best_period_value": best_value,
+        "count": len(filtered),
+    }
+
+    return render_template(
+        "dashboard.html",
+        rows=filtered,
+        kpis=kpis,
+        months=months_sorted,
+        quarters=quarters_sorted,
+        clients=clients_sorted,
+        sel_month=sel_month,
+        sel_quarter=sel_quarter,
+        sel_client=sel_client,
+        sel_status=sel_status,
+        q=q,
+        statuses=["EN COURS", "TERMINÉ"],
+    )
 
 
 @app.route("/analytics")
@@ -1239,15 +1457,15 @@ def import_data():
         if dash_file and dash_file.filename:
             headers, rows = _read_csv_any_delimiter(dash_file.read())
             # normalisation d'entêtes : on garde uniquement l'attendu
-            if not set(EXPECTED_DASHBOARD_HEADERS).issubset(set([h.strip() for h in headers])):
-                flash("Dashboard CSV : entêtes manquantes. Attendu : " + ", ".join(EXPECTED_DASHBOARD_HEADERS), "danger")
+            if not set(REQUIRED_DASHBOARD_HEADERS).issubset(set([h.strip() for h in headers])):
+                flash("Dashboard CSV : entêtes manquantes. Attendu (minimum) : " + ", ".join(REQUIRED_DASHBOARD_HEADERS) + " (colonnes optionnelles : client, circulation_arrondie, x_next)", "danger")
                 return redirect(url_for("import_data"))
 
             out_rows = []
             for r in rows:
-                out_rows.append({h: (r.get(h, "") or "").strip() for h in EXPECTED_DASHBOARD_HEADERS})
+                out_rows.append({h: (r.get(h, "") or "").strip() for h in DASHBOARD_HEADERS})
 
-            out = _make_csv_bytes(EXPECTED_DASHBOARD_HEADERS, out_rows)
+            out = _make_csv_bytes(DASHBOARD_HEADERS, out_rows)
             Path(dashboard_path(username)).write_bytes(out)
 
         # Historique
@@ -1276,7 +1494,7 @@ def export_dashboard(fmt: str):
     username = session["user"]
     rows = load_dashboard(filename=dashboard_path(username))
 
-    fieldnames = EXPECTED_DASHBOARD_HEADERS
+    fieldnames = DASHBOARD_HEADERS
     out_rows = []
     for r in rows:
         out_rows.append({h: r.get(h, "") for h in fieldnames})
@@ -1291,11 +1509,24 @@ def export_dashboard(fmt: str):
         )
     elif fmt.lower() == "pdf":
         headers = [
-            "date_calcul","date_fin_cycle","montant_investi","interets","commissions",
-            "commission_supplementaire","revenu_global","MEC","circulation","rendement"
+            "date_calcul","date_fin_cycle","client","statut","montant_investi","interets","commissions",
+            "commission_supplementaire","revenu_global","MEC","circulation","circulation_arrondie","x_next","rendement"
         ]
+
+        # Ajouter un statut calculé (EN COURS / TERMINÉ) pour l'export
+        now = datetime.now()
+        pdf_rows = []
+        for r in rows:
+            rr = dict(r)
+            end_dt = _safe_dt(rr.get("date_fin_cycle", ""))
+            rr["statut"] = "EN COURS" if (end_dt and end_dt > now) else "TERMINÉ"
+            rr.setdefault("client", "")
+            rr.setdefault("circulation_arrondie", "")
+            rr.setdefault("x_next", "")
+            pdf_rows.append(rr)
+
         try:
-            pdf = _make_pdf_bytes("Tableau de bord — MellionCoin", headers, out_rows)
+            pdf = _make_pdf_bytes("Tableau de bord — MellionCoin", headers, pdf_rows, landscape_mode=True)
         except RuntimeError as e:
             return str(e), 400
         return send_file(
@@ -1428,7 +1659,7 @@ def export_orders(fmt: str):
         )
     elif fmt.lower() == "pdf":
         try:
-            pdf = _make_pdf_bytes("Mes ordres — MellionCoin", fieldnames, out_rows)
+            pdf = _make_pdf_bytes("Mes ordres — MellionCoin", fieldnames, out_rows, landscape_mode=True)
         except RuntimeError as e:
             return str(e), 400
         return send_file(

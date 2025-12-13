@@ -10,7 +10,14 @@
           <div class="mb-3">
             <label class="form-label">Montant à investir (X) — multiple de 500</label>
             <input type="number" name="montant" class="form-control" min="500" step="500" required value="{{ prefill_x if prefill_x else '' }}">
+          
+          <div class="mb-3">
+            <label class="form-label">Client (optionnel)</label>
+            <input type="text" name="client" class="form-control" placeholder="Nom / identifiant client">
+            <div class="form-text">Utile pour filtrer le tableau de bord par client.</div>
           </div>
+
+</div>
 
           <div class="mb-3">
             <label class="form-label">Réinvestir les commissions ?</label>

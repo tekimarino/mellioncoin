@@ -2,7 +2,7 @@
   "failed": {},
   "last_login": {
     "marinoteki": {
-      "when": "2025-12-12T13:54:01",
+      "when": "2025-12-13T06:32:52",
       "ip": "127.0.0.1",
       "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
     }
@@ -164,6 +164,94 @@
       "when": "2025-12-12T14:18:07",
       "user": "marinoteki",
       "event": "reset_orders_data",
+      "ip": "127.0.0.1",
+      "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+      "detail": ""
+    },
+    {
+      "when": "2025-12-12T18:29:04",
+      "user": "marinoteki",
+      "event": "session_timeout",
+      "ip": "127.0.0.1",
+      "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+      "detail": ""
+    },
+    {
+      "when": "2025-12-12T18:29:29",
+      "user": "marinoteki",
+      "event": "login_success",
+      "ip": "127.0.0.1",
+      "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+      "detail": ""
+    },
+    {
+      "when": "2025-12-12T18:29:50",
+      "user": "marinoteki",
+      "event": "reset_orders_data",
+      "ip": "127.0.0.1",
+      "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+      "detail": ""
+    },
+    {
+      "when": "2025-12-12T18:46:39",
+      "user": "marinoteki",
+      "event": "reset_orders_data",
+      "ip": "127.0.0.1",
+      "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+      "detail": ""
+    },
+    {
+      "when": "2025-12-12T18:57:55",
+      "user": "marinoteki",
+      "event": "logout",
+      "ip": "127.0.0.1",
+      "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+      "detail": ""
+    },
+    {
+      "when": "2025-12-12T18:58:10",
+      "user": "marinoteki",
+      "event": "login_success",
+      "ip": "127.0.0.1",
+      "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+      "detail": ""
+    },
+    {
+      "when": "2025-12-12T19:24:22",
+      "user": "marinoteki",
+      "event": "reset_orders_data",
+      "ip": "127.0.0.1",
+      "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+      "detail": ""
+    },
+    {
+      "when": "2025-12-13T05:02:23",
+      "user": "marinoteki",
+      "event": "session_timeout",
+      "ip": "127.0.0.1",
+      "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+      "detail": ""
+    },
+    {
+      "when": "2025-12-13T05:04:19",
+      "user": "marinoteki",
+      "event": "login_success",
+      "ip": "127.0.0.1",
+      "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+      "detail": ""
+    },
+    {
+      "when": "2025-12-13T06:32:35",
+      "user": "marinoteki",
+      "event": "session_timeout",
+      "ip": "127.0.0.1",
+      "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+      "detail": ""
+    },
+    {
+      "when": "2025-12-13T06:32:52",
+      "user": "marinoteki",
+      "event": "login_success",
       "ip": "127.0.0.1",
       "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
       "detail": ""

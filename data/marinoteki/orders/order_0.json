@@ -1,188 +1,108 @@
 {
   "order_idx": 0,
-  "date_calcul": "12-12-2025 14:18:35",
-  "date_fin_cycle": "09-01-2026 14:18:35",
+  "client": "Marino TEKI",
+  "date_calcul": "13-12-2025 06:34:01",
+  "date_fin_cycle": "10-01-2026 06:34:01",
   "cycle": 28,
   "taux_cycle": 0.24,
-  "X": 50000.0,
-  "reinvest": false,
+  "X": 10000.0,
+  "reinvest": true,
   "repartition_csv": "Repartition_MEC_1.csv",
   "niveaux": [
     {
       "niveau": 0,
       "role": "Parrain",
-      "mec": 4,
-      "capital": 2000.0,
-      "interet": 480.0,
-      "commission": 320.3999999999999,
-      "revenu": 800.3999999999999
+      "mec": 2,
+      "capital": 1000.0,
+      "interet": 240.0,
+      "commission": 134.4,
+      "revenu": 374.4
     },
     {
       "niveau": 1,
       "role": "Filleul",
-      "mec": 4,
-      "capital": 2000.0,
-      "interet": 480.0,
-      "commission": 287.9999999999999,
-      "revenu": 767.9999999999999
+      "mec": 2,
+      "capital": 1000.0,
+      "interet": 240.0,
+      "commission": 138.0,
+      "revenu": 378.0
     },
     {
       "niveau": 2,
       "role": "Filleul",
-      "mec": 3,
-      "capital": 1500.0,
-      "interet": 360.0,
-      "commission": 277.19999999999993,
-      "revenu": 637.1999999999999
+      "mec": 2,
+      "capital": 1000.0,
+      "interet": 240.0,
+      "commission": 108.0,
+      "revenu": 348.0
     },
     {
       "niveau": 3,
       "role": "Filleul",
-      "mec": 3,
-      "capital": 1500.0,
-      "interet": 360.0,
-      "commission": 266.4,
-      "revenu": 626.4
+      "mec": 1,
+      "capital": 500.0,
+      "interet": 120.0,
+      "commission": 102.0,
+      "revenu": 222.0
     },
     {
       "niveau": 4,
       "role": "Filleul",
-      "mec": 3,
-      "capital": 1500.0,
-      "interet": 360.0,
-      "commission": 255.59999999999997,
-      "revenu": 615.5999999999999
+      "mec": 1,
+      "capital": 500.0,
+      "interet": 120.0,
+      "commission": 96.0,
+      "revenu": 216.0
     },
     {
       "niveau": 5,
       "role": "Filleul",
-      "mec": 3,
-      "capital": 1500.0,
-      "interet": 360.0,
-      "commission": 236.39999999999998,
-      "revenu": 596.4
+      "mec": 1,
+      "capital": 500.0,
+      "interet": 120.0,
+      "commission": 90.0,
+      "revenu": 210.0
     },
     {
       "niveau": 6,
       "role": "Filleul",
-      "mec": 3,
-      "capital": 1500.0,
-      "interet": 360.0,
-      "commission": 205.2,
-      "revenu": 565.2
+      "mec": 1,
+      "capital": 500.0,
+      "interet": 120.0,
+      "commission": 132.0,
+      "revenu": 252.0
     },
     {
       "niveau": 7,
       "role": "Filleul",
-      "mec": 2,
-      "capital": 1000.0,
-      "interet": 240.0,
-      "commission": 344.4,
-      "revenu": 584.4
+      "mec": 1,
+      "capital": 500.0,
+      "interet": 120.0,
+      "commission": 216.0,
+      "revenu": 336.0
     },
     {
       "niveau": 8,
       "role": "Filleul",
-      "mec": 2,
-      "capital": 1000.0,
-      "interet": 240.0,
-      "commission": 334.79999999999995,
-      "revenu": 574.8
-    },
-    {
-      "niveau": 9,
-      "role": "Filleul",
-      "mec": 2,
-      "capital": 1000.0,
-      "interet": 240.0,
-      "commission": 325.2,
-      "revenu": 565.2
-    },
-    {
-      "niveau": 10,
-      "role": "Filleul",
-      "mec": 2,
-      "capital": 1000.0,
-      "interet": 240.0,
-      "commission": 456.0,
-      "revenu": 696.0
-    },
-    {
-      "niveau": 11,
-      "role": "Filleul",
-      "mec": 2,
-      "capital": 1000.0,
-      "interet": 240.0,
-      "commission": 426.0,
-      "revenu": 666.0
-    },
-    {
-      "niveau": 12,
-      "role": "Filleul",
-      "mec": 1,
-      "capital": 500.0,
-      "interet": 120.0,
-      "commission": 420.0,
-      "revenu": 540.0
-    },
-    {
-      "niveau": 13,
-      "role": "Filleul",
-      "mec": 1,
-      "capital": 500.0,
-      "interet": 120.0,
-      "commission": 414.0,
-      "revenu": 534.0
-    },
-    {
-      "niveau": 14,
-      "role": "Filleul",
-      "mec": 1,
-      "capital": 500.0,
-      "interet": 120.0,
-      "commission": 408.0,
-      "revenu": 528.0
-    },
-    {
-      "niveau": 15,
-      "role": "Filleul",
-      "mec": 1,
-      "capital": 500.0,
-      "interet": 120.0,
-      "commission": 768.0,
-      "revenu": 888.0
-    },
-    {
-      "niveau": 16,
-      "role": "Filleul",
-      "mec": 1,
-      "capital": 500.0,
-      "interet": 120.0,
-      "commission": 1488.0,
-      "revenu": 1608.0
-    },
-    {
-      "niveau": 17,
-      "role": "Filleul",
-      "mec": 62,
-      "capital": 31000.0,
-      "interet": 7440.0,
+      "mec": 9,
+      "capital": 4500.0,
+      "interet": 1080.0,
       "commission": 0.0,
-      "revenu": 7440.0
+      "revenu": 1080.0
     }
   ],
-  "total_I": 12000.0,
-  "total_C": 7233.599999999999,
-  "total_R": 19233.6,
-  "C_tm": 0.0,
-  "Sa": 0.0,
-  "Com_supp": 0.0,
-  "Revenu_global": 19233.6,
-  "circulation": 69233.6,
-  "circulation_arrondie": 69000.0,
-  "x_next": 69000.0,
-  "total_MEC_initial": 100.0,
-  "total_MEC_global": 100.0,
-  "montant_investi": 50000.0,
-  "rendement": 0.38467199999999996
+  "total_I": 2400.0,
+  "total_C": 1016.4,
+  "total_R": 3416.4,
+  "C_tm": 1500.0,
+  "Sa": 483.6,
+  "Com_supp": 1860.0,
+  "Revenu_global": 4260.0,
+  "circulation": 14260.0,
+  "circulation_arrondie": 14500.0,
+  "x_next": 14500.0,
+  "total_MEC_initial": 20.0,
+  "total_MEC_global": 23.0,
+  "montant_investi": 10483.6,
+  "rendement": 0.4063489640963028
 }
