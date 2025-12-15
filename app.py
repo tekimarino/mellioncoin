@@ -16,7 +16,7 @@ import io
 import zipfile
 import tempfile
 from pathlib import Path
-
+from urllib.parse import urlparse
 
 
 from mellion_core import (
@@ -253,9 +253,58 @@ def login_required(view_func):
     @wraps(view_func)
     def wrapped(*args, **kwargs):
         if "user" not in session:
+            # Avoid weird/empty next values on home page
+            if request.path in ("", "/"):
+                return redirect(url_for("login"))
             return redirect(url_for("login", next=request.path))
         return view_func(*args, **kwargs)
     return wrapped
+
+
+def safe_next_url(next_url: str, fallback: str = "/") -> str:
+    """Prevent open-redirects (often flagged as phishing).
+
+    - Accept internal absolute paths (e.g., "/orders").
+    - Accept absolute URLs only if they point to the same host (we keep path+query).
+    - Reject protocol-relative URLs like "//evil.tld".
+    - Treat empty/quoted/whitespace-only values as invalid.
+    """
+    if not next_url:
+        return fallback
+
+    s = str(next_url).strip()
+    # Reject values like "" or " " or '   '
+    s2 = s.strip('"\'').strip()
+    if not s2:
+        return fallback
+
+    # Protocol-relative URLs ("//evil.tld")
+    if s2.startswith("//"):
+        return fallback
+
+    try:
+        u = urlparse(s2)
+    except Exception:
+        return fallback
+
+    # Absolute URL: only allow if same host
+    if u.scheme or u.netloc:
+        try:
+            host = urlparse(request.host_url).netloc
+        except Exception:
+            host = ""
+        if host and u.netloc == host:
+            path = u.path or "/"
+            if u.query:
+                path += "?" + u.query
+            return path
+        return fallback
+
+    # Relative URL: must be an internal absolute path
+    if not s2.startswith("/"):
+        return fallback
+
+    return s2
 
 
 def _parse_money(value: str) -> float:
