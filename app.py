@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import math
 import re
 import os
+from urllib.parse import urlparse
 import csv
 import json
 import shutil
@@ -50,6 +51,45 @@ DEFAULT_USERS = {
 
 def _now_iso():
     return datetime.now().isoformat(timespec="seconds")
+
+
+def safe_next_url(next_url: str, fallback: str = "/") -> str:
+    """Prevent open-redirects (often flagged as phishing).
+
+    Rules:
+    - Allow only internal absolute paths like "/orders".
+    - Allow absolute URLs only if they point to the same host (we then keep path+query).
+    - Reject protocol-relative URLs like "//evil.tld".
+    """
+    if not next_url:
+        return fallback
+
+    try:
+        u = urlparse(next_url)
+    except Exception:
+        return fallback
+
+    # Protocol-relative URLs ("//evil.tld")
+    if next_url.startswith("//"):
+        return fallback
+
+    # Absolute URL: only allow if same host
+    if u.scheme or u.netloc:
+        try:
+            host = urlparse(request.host_url).netloc
+        except Exception:
+            host = ""
+        if host and u.netloc == host:
+            path = u.path or "/"
+            if u.query:
+                path += "?" + u.query
+            return path
+        return fallback
+
+    # Relative URL: must be an internal absolute path
+    if not next_url.startswith("/"):
+        return fallback
+    return next_url
 
 
 def _load_json(path: str, default):
@@ -936,7 +976,7 @@ def login():
 
             audit_event(username, "login_success", ip, ua)
             flash("Connexion réussie.", "success")
-            next_url = request.args.get("next") or url_for("index")
+            next_url = safe_next_url(request.args.get("next"), url_for("index"))
             return redirect(next_url)
 
         # Échec
@@ -962,7 +1002,7 @@ def orders_toggle_favorite(order_idx: int):
     else:
         fav_set.add(order_idx)
     save_favorites(username, fav_set)
-    return redirect(request.referrer or url_for("orders"))
+    return redirect(safe_next_url(request.referrer, url_for("orders")))
 
 
 @app.route("/logout")
